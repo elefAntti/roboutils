@@ -8,8 +8,7 @@ from PyQt5.QtCore import QObject, QUrl, pyqtSignal, pyqtSlot, pyqtProperty
 from PyQt5.QtQml import QQmlApplicationEngine
 from PyQt5.QtWidgets import QApplication
 from collections import defaultdict
-
-import socket
+from RemoteControlSocket import RemoteControlSocket
 
 manual = False
 release = False
@@ -19,14 +18,7 @@ ip = 'localhost'
 scheduler = QtScheduler(QtCore)
 
 # Create a TCP/IP socket
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-address = (ip, 8000)
-server_address = ("", 8003)
-sock.bind(server_address)
-
-sock.setblocking(0)
-
-#sock.sendto(bytes("0,0,0", "UTF-8"),address)
+sock = RemoteControlSocket(port = 8001, remote_address = (ip, 8000))
 
 class Backend(QObject):
     def __init__(self, parent=None):
@@ -61,18 +53,14 @@ class Backend(QObject):
             turn_speed = -1.24
         if left:
             turn_speed = 1.24
-        return fwd_speed, turn_speed
+        return {"velocity_command": fwd_speed,
+            "turn_command": turn_speed,
+            "state": self.robot_state }
 
     def send_packet(self, _):
         command = self.get_command()
-        print("sending %f %f %d"%(command[0], command[1], self.robot_state))
-        try:
-            sock.sendto(msgpack.dumps(
-            [self.seq_no, command[0], command[1], 0, self.robot_state], \
-            encoding = "UTF-8"), address)
-            self.seq_no += 1
-        except:
-            print("error")
+        #print("Sending: %s"%str(command))
+        sock.send(command)
 
 app = QApplication(sys.argv)
 backend = Backend()

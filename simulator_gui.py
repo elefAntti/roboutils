@@ -111,9 +111,13 @@ def simulateRobot(initial_pose, commands, timestep_ms=30, scheduler=scheduler):
             initial_pose)
 
 def receiveCommands(timestep_ms=30, scheduler=scheduler):
-    socket = RemoteControlSocket.RemoteControlSocket()
+    state = {"velocity_command": 0,
+            "turn_command": 0,
+            "state": 0}
+    socket = RemoteControlSocket.RemoteControlSocket(port = 8000, state_dict = state)
     return rx.Observable.interval(timestep_ms, scheduler=scheduler)\
-        .map(lambda _:socket.receive()[0])
+        .map(lambda _:socket.receive()) \
+        .map(lambda msg: kine.Command(msg["velocity_command"], msg["turn_command"]))
 
 app = QApplication(sys.argv)
 robot = GuiRobot()
