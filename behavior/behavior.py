@@ -5,45 +5,56 @@ class State(Enum):
     Success = 1
     Failure = 2
 
-#Executes the child tasks in parallel
-#Completes when al the children are complete or
-#When first one is complete (if to_first_success = True is passed)
-class Parallel:
-    def __init__(self, *children, **kwargs):
+
+class ParallelAny:
+    """
+Behavior tree node that executes the child tasks in parallel
+Fails when all of the children fail,
+Succeeds as soon as one succeeds: does not evaluate the rest
+of the children for that update.
+    """
+    def __init__(self, *children):
         self.children = children
-        self.completed = [False for child in self.children]
-        if "to_first_success" in kwargs:
-            self.to_first_success = kwargs["to_first_success"]
-        else:
-            self.to_first_success = False
     def start(self):
         for child in self.children:
+            child.completed = False
             child.start()
-        self.completed = [False for child in self.children]
     def update(self):
-        failed = False
-        succeeded = False
         running = False
-        for idx in range(len(self.children)):
-            child = self.children[idx]
-            if not self.completed[idx]:
+        for child in self.children:
+            if not child.completed:
+                running = True
                 status = child.update()
                 if status == State.Success:
-                    succeeded = True
-                    self.completed[idx] = True
+                    return State.Success
                 if status == State.Failure:
-                    failed = True
-                    self.completed[idx] = True
-                if status == State.Running:
-                    running = True
-        if failed:
-            return State.Failure
-        if succeeded and self.to_first_success:
-            return State.Success
-        if running:
-            return State.Running
-        else:
-            return State.Success
+                    child.completed = True
+        return State.Running if running else State.Failure
+
+class ParallelAll:
+    """
+Behavior tree node that executes the child tasks in parallel
+Completes when all of the children are complete,
+Fails as soon as one fails: does not evaluate the rest of the children
+for that update.
+    """
+    def __init__(self, *children):
+        self.children = children
+    def start(self):
+        for child in self.children:
+            child.completed = False
+            child.start()
+    def update(self):
+        running = False
+        for child in self.children:
+            if not child.completed:
+                running = True
+                status = child.update()
+                if status == State.Failure:
+                    return State.Failure
+                if status == State.Success:
+                    child.completed = True
+        return State.Running if running else State.Success
 
 #Executes children in order until all of them complete or first one fails
 class Sequence:
@@ -193,7 +204,7 @@ class Condition:
 #A decorator to construct a condition from any function
 # - If function returns false, condition fails
 # - If function returns true, it succeeds
-def task(fcn):
+def condition(fcn):
     def factory(*args):
         return Condition(fcn, *args)
     return factory
