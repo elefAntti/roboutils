@@ -1,5 +1,5 @@
 from . import behavior
-from .. import kinematics as kine
+from ..utils import kinematics as kine
 import math
 
 def sign(flt):

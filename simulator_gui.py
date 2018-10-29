@@ -8,9 +8,9 @@ from PyQt5.QtCore import QObject, QUrl, pyqtSignal, pyqtSlot, pyqtProperty
 from PyQt5.QtQml import QQmlApplicationEngine
 from PyQt5.QtWidgets import QApplication
 
-from vec2 import Transform, Vec2
-import kinematics as kine
-import RemoteControlSocket
+from utils import Transform, Vec2
+import utils.kinematics as kine
+from utils import RemoteControlSocket
 
 scheduler = QtScheduler(QtCore)
 
@@ -114,7 +114,7 @@ def receiveCommands(timestep_ms=30, scheduler=scheduler):
     state = {"velocity_command": 0,
             "turn_command": 0,
             "state": 0}
-    socket = RemoteControlSocket.RemoteControlSocket(port = 8000, state_dict = state)
+    socket = RemoteControlSocket(port = 8000, state_dict = state)
     return rx.Observable.interval(timestep_ms, scheduler=scheduler)\
         .map(lambda _:socket.receive()) \
         .map(lambda msg: kine.Command(msg["velocity_command"], msg["turn_command"]))
