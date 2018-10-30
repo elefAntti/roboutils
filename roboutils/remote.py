@@ -1,6 +1,5 @@
 import socket
 import time
-from . import kinematics as kine
 import msgpack
 
 class RemoteControlSocket:
@@ -41,3 +40,30 @@ class RemoteControlSocket:
         self.send(message)
     def is_timeout(self):
         return time.time() - self.last_received > self.safety_time
+
+
+class UDPSendReceive:
+    def __init__(self, robot, remote_address, fields_to_send, local_port = 8000 ):
+        self.robot = robot
+        self.socket = RemoteControlSocket(
+            local_port,
+            state_dict = robot.__dict__,
+            remote_address = remote_address)
+        self.fields = fields_to_send
+    def start(self):
+        pass
+    def update(self):
+        self.socket.send_fields(self.fields)
+        self.socket.receive()
+
+def SendCommandAndReadSensors(robot, remote_address, local_port = 8001):
+    fields_to_send = ("velocity_command", "turn_command")
+    return UDPSendReceive(robot, remote_address, fields_to_send, local_port )
+
+def SendSensorsAndReadCommand(robot, remote_address, local_port = 8000):
+    fields_to_send = (
+            "left_bumper_hit",
+            "right_bumper_hit",
+            "travelled_distance",
+            "heading_rad")
+    return UDPSendReceive(robot, remote_address, fields_to_send, local_port )

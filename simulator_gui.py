@@ -10,10 +10,9 @@ from PyQt5.QtWidgets import QApplication
 
 from roboutils.utils import Transform, Vec2
 import roboutils.utils.kinematics as kine
-from roboutils.utils import RemoteControlSocket
 from roboutils import hal
 from roboutils.hal import simulation
-from roboutils.hal import remote
+from roboutils import remote
 from roboutils import behavior
 
 scheduler = QtScheduler(QtCore)

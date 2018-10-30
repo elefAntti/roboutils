@@ -1,5 +1,5 @@
 from roboutils.behavior.robot import FeelTheWayWithBumpers
-from roboutils.hal.remote import SendCommandAndReadSensors
+from roboutils.remote import SendCommandAndReadSensors
 from roboutils import hal
 from roboutils.utils import kinematics as kine
 from roboutils.behavior import ParallelAll, run, Task
