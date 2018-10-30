@@ -1,3 +1,5 @@
+import time
+
 from .. import utils
 from ..behavior import State
 from ..utils import kinematics as kine
@@ -45,9 +47,10 @@ class ComputeWheelCommands:
         return State.Running
 
 class ComputeOdometry:
-    def __init__(self, robot, output = None):
+    def __init__(self, robot, output = None, max_dt = 2.0):
         self.robot = robot
         self.output = output or robot
+        self.max_dt = max_dt
     def start(self):
         self.old_left_pos = self.robot.left_wheel.position
         self.old_right_pos = self.robot.right_wheel.position
@@ -55,8 +58,11 @@ class ComputeOdometry:
         self.output.heading_rad = 0
         self.output.pose = utils.Transform.identity()
         self.output.movement = kine.Command(0,0)
+        self.last_time = time.time()
     def update(self):
-        dt = 1 #This can be anything, it doesn't make any difference
+        new_time = time.time()
+        dt = min(new_time - self.last_time, self.max_dt)
+        self.last_time = new_time
         wheel_command = kine.WheelCommand(
             (self.robot.left_wheel.position - self.old_left_pos) / dt,
             (self.robot.right_wheel.position - self.old_right_pos) / dt)
