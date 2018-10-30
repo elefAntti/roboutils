@@ -1,6 +1,6 @@
 import socket
 import time
-import utils.kinematics as kine
+from . import kinematics as kine
 import msgpack
 
 class RemoteControlSocket:

@@ -11,9 +11,10 @@ from PyQt5.QtWidgets import QApplication
 from utils import Transform, Vec2
 import utils.kinematics as kine
 from utils import RemoteControlSocket
+import hal
+import behavior
 
 scheduler = QtScheduler(QtCore)
-
 
 class GuiRobot(QObject):
     _xChanged = pyqtSignal()
@@ -90,7 +91,8 @@ class GuiRobot(QObject):
     def pose(self):
         return Transform(self.heading, Vec2(self.x, self.y))
     
-    def setPose(self, pose):
+    @pose.set
+    def pose(self, pose):
         self.x = pose.x
         self.y = pose.y
         self.heading = pose.heading
@@ -103,29 +105,37 @@ class GuiRobot(QObject):
         self._leftVelChanged.emit()
         self._rightVelChanged.emit()
 
-def simulateRobot(initial_pose, commands, timestep_ms=30, scheduler=scheduler):
-    return rx.Observable.interval(timestep_ms, scheduler=scheduler)\
-        .with_latest_from(commands, lambda idx, command: command)\
-        .scan(
-            lambda pose, command: kine.predictPose(pose, command, timestep_ms/1000),
-            initial_pose)
+# def simulateRobot(initial_pose, commands, timestep_ms=30, scheduler=scheduler):
+#     return rx.Observable.interval(timestep_ms, scheduler=scheduler)\
+#         .with_latest_from(commands, lambda idx, command: command)\
+#         .scan(
+#             lambda pose, command: kine.predictPose(pose, command, timestep_ms/1000),
+#             initial_pose)
 
-def receiveCommands(timestep_ms=30, scheduler=scheduler):
-    state = {"velocity_command": 0,
-            "turn_command": 0,
-            "state": 0}
-    socket = RemoteControlSocket(port = 8000, state_dict = state)
-    return rx.Observable.interval(timestep_ms, scheduler=scheduler)\
-        .map(lambda _:socket.receive()) \
-        .map(lambda msg: kine.Command(msg["velocity_command"], msg["turn_command"]))
+# def receiveCommands(timestep_ms=30, scheduler=scheduler):
+#     state = {"velocity_command": 0,
+#             "turn_command": 0,
+#             "state": 0}
+#     socket = RemoteControlSocket(port = 8000, state_dict = state)
+#     return rx.Observable.interval(timestep_ms, scheduler=scheduler)\
+#         .map(lambda _:socket.receive()) \
+#         .map(lambda msg: kine.Command(msg["velocity_command"], msg["turn_command"]))
 
 app = QApplication(sys.argv)
 robot = GuiRobot()
 
-simulation = simulateRobot(Transform.identity(), receiveCommands())
-simulation.subscribe(robot.setPose)
+#simulation = simulateRobot(Transform.identity(), receiveCommands())
+#simulation.subscribe(robot.setPose)
 
 kinematics = kine.KinematicModel(axel_width = 0.2, left_wheel_r = 0.03, right_wheel_r = 0.03)
+robot_state = hal.RobotInterface(kinematics)
+simulation_tree = behavior.ParallelAll(
+    hal.remote.SendSensorsAndReadCommand(robot_state, None, local_port=8000),
+    hal.ComputeWheelCommands(robot_state),
+    hal.simulation.SimulateMotor(robot_state.left_wheel),
+    hal.simulation.SimulateMotor(robot_state.right_wheel),
+    hal.ComputeOdometry(robot_state, output=robot)) 
+
 #backend.commands.map(kinematics.computeWheelCommand)\
 #    .subscribe(robot.setWheelCommand)
 
@@ -135,5 +145,9 @@ engine.load('qml/main.qml')
 
 win = engine.rootObjects()[0]
 win.show()
+
+simulation_tree.start()
+rx.Observable.interval(30, scheduler=scheduler)\
+    .subscribe(lambda _:simulation_tree.update())
 
 app.exec_()
