@@ -8,11 +8,13 @@ from PyQt5.QtCore import QObject, QUrl, pyqtSignal, pyqtSlot, pyqtProperty
 from PyQt5.QtQml import QQmlApplicationEngine
 from PyQt5.QtWidgets import QApplication
 
-from utils import Transform, Vec2
-import utils.kinematics as kine
-from utils import RemoteControlSocket
-import hal
-import behavior
+from roboutils.utils import Transform, Vec2
+import roboutils.utils.kinematics as kine
+from roboutils.utils import RemoteControlSocket
+from roboutils import hal
+from roboutils.hal import simulation
+from roboutils.hal import remote
+from roboutils import behavior
 
 scheduler = QtScheduler(QtCore)
 
@@ -91,7 +93,7 @@ class GuiRobot(QObject):
     def pose(self):
         return Transform(self.heading, Vec2(self.x, self.y))
     
-    @pose.set
+    @pose.setter
     def pose(self, pose):
         self.x = pose.x
         self.y = pose.y
@@ -130,10 +132,10 @@ robot = GuiRobot()
 kinematics = kine.KinematicModel(axel_width = 0.2, left_wheel_r = 0.03, right_wheel_r = 0.03)
 robot_state = hal.RobotInterface(kinematics)
 simulation_tree = behavior.ParallelAll(
-    hal.remote.SendSensorsAndReadCommand(robot_state, None, local_port=8000),
+    remote.SendSensorsAndReadCommand(robot_state, None, local_port=8000),
     hal.ComputeWheelCommands(robot_state),
-    hal.simulation.SimulateMotor(robot_state.left_wheel),
-    hal.simulation.SimulateMotor(robot_state.right_wheel),
+    simulation.SimulateMotor(robot_state.left_wheel),
+    simulation.SimulateMotor(robot_state.right_wheel),
     hal.ComputeOdometry(robot_state, output=robot)) 
 
 #backend.commands.map(kinematics.computeWheelCommand)\

@@ -8,7 +8,7 @@ from PyQt5.QtCore import QObject, QUrl, pyqtSignal, pyqtSlot, pyqtProperty
 from PyQt5.QtQml import QQmlApplicationEngine
 from PyQt5.QtWidgets import QApplication
 from collections import defaultdict
-from utils import RemoteControlSocket
+from roboutils.utils import RemoteControlSocket
 
 manual = False
 release = False
