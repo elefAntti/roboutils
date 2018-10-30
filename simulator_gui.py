@@ -107,27 +107,8 @@ class GuiRobot(QObject):
         self._leftVelChanged.emit()
         self._rightVelChanged.emit()
 
-# def simulateRobot(initial_pose, commands, timestep_ms=30, scheduler=scheduler):
-#     return rx.Observable.interval(timestep_ms, scheduler=scheduler)\
-#         .with_latest_from(commands, lambda idx, command: command)\
-#         .scan(
-#             lambda pose, command: kine.predictPose(pose, command, timestep_ms/1000),
-#             initial_pose)
-
-# def receiveCommands(timestep_ms=30, scheduler=scheduler):
-#     state = {"velocity_command": 0,
-#             "turn_command": 0,
-#             "state": 0}
-#     socket = RemoteControlSocket(port = 8000, state_dict = state)
-#     return rx.Observable.interval(timestep_ms, scheduler=scheduler)\
-#         .map(lambda _:socket.receive()) \
-#         .map(lambda msg: kine.Command(msg["velocity_command"], msg["turn_command"]))
-
 app = QApplication(sys.argv)
 robot = GuiRobot()
-
-#simulation = simulateRobot(Transform.identity(), receiveCommands())
-#simulation.subscribe(robot.setPose)
 
 kinematics = kine.KinematicModel(axel_width = 0.2, left_wheel_r = 0.03, right_wheel_r = 0.03)
 robot_state = hal.RobotInterface(kinematics)
@@ -137,9 +118,6 @@ simulation_tree = behavior.ParallelAll(
     simulation.SimulateMotor(robot_state.left_wheel),
     simulation.SimulateMotor(robot_state.right_wheel),
     hal.ComputeOdometry(robot_state, output=robot)) 
-
-#backend.commands.map(kinematics.computeWheelCommand)\
-#    .subscribe(robot.setWheelCommand)
 
 engine = QQmlApplicationEngine()
 engine.rootContext().setContextProperty("robot", robot)
