@@ -1,4 +1,5 @@
 from . import behavior
+from . import decorator
 from ..utils import kinematics as kine
 import math
 
@@ -112,7 +113,7 @@ def TurnAwayFromWall(robot, reverse_distance = 0.1, turn_angle = deg2rad(20)):
             TurnOnSpot(robot, turn_angle)))
 
 def FeelTheWayWithBumpers(robot, speed):
-    return behavior.RepeatUntilFail(
+    return decorator.RepeatUntilFail(
         behavior.Sequence(
             DriveToAWall(robot, speed),
             TurnAwayFromWall(robot)))

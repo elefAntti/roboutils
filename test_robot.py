@@ -11,12 +11,12 @@ robot_state.has_left_bumper = True
 robot_state.has_right_bumper = True
 tree = \
     RateLimit(
+        0.03,
         ParallelAll(
             FeelTheWayWithBumpers(robot_state, 0.14),
             SendCommandAndReadSensors(
                 robot_state,
                 local_port = 8001,
-                remote_address = ('localhost', 8000)))
-        , 0.03)
+                remote_address = ('localhost', 8000))))
 
 run(tree)

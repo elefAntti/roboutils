@@ -12,7 +12,7 @@ class Delay:
         return State.Running
 
 class RateLimit:
-    def __init__(self, child, duration):
+    def __init__(self, duration, child):
         self.duration = duration
         self.child = child
     def start(self):
