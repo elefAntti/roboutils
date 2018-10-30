@@ -17,12 +17,12 @@ ApplicationWindow {
 				CheckBox
 				{
 					text: "Left bumper"
-					checked: robot.left_bumper
+					onClicked: robot.left_bumper = checked;
 				}
 				CheckBox
 				{
 					text: "Right bumper"
-					checked: robot.right_bumper
+					onClicked: robot.right_bumper = checked;
 				}
 			}
 

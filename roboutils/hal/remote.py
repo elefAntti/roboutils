@@ -20,8 +20,13 @@ class SendSensorsAndReadCommand:
             local_port,
             state_dict = robot.__dict__,
             remote_address = remote_address)
+        self.fields = (
+            "left_bumper_hit",
+            "right_bumper_hit",
+            "travelled_distance",
+            "heading_rad")
     def start(self):
         pass
     def update(self):
-        self.socket.send_fields(("left_bumper_hit", "right_bumper_hit"))
+        self.socket.send_fields(self.fields)
         self.socket.receive()

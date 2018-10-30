@@ -26,7 +26,7 @@ class GuiRobot(QObject):
     _rightVelChanged = pyqtSignal()
     _left_bumper_changed = pyqtSignal()
     _right_bumper_changed = pyqtSignal()
-    def __init__(self, parent=None):
+    def __init__(self, robot_state, parent=None):
         super().__init__(parent)
         self._x = 0
         self._y = 0
@@ -35,7 +35,7 @@ class GuiRobot(QObject):
         self._right_wheel_vel = 0
         self._left_bumper = False
         self._right_bumper = False
-
+        self.robot_state = robot_state
     @pyqtProperty('QVariant', notify=_xChanged)
     def x(self):
         return self._x
@@ -73,20 +73,20 @@ class GuiRobot(QObject):
 
     @pyqtProperty('QVariant', notify=_left_bumper_changed)
     def left_bumper(self):
-        return self._left_bumper
+        return self.robot_state.left_bumper_hit
 
     @left_bumper.setter
     def left_bumper(self, value):
-        self._left_bumper = value
+        self.robot_state.left_bumper_hit = value
         self._left_bumper_changed.emit()
 
     @pyqtProperty('QVariant', notify=_right_bumper_changed)
     def right_bumper(self):
-        return self._right_bumper
+        return self.robot_state.right_bumper_hit
 
     @right_bumper.setter
     def right_bumper(self, value):
-        self._right_bumper = value
+        self.robot_state.right_bumper_hit = value
         self._right_bumper_changed.emit()
 
     @property
@@ -108,16 +108,22 @@ class GuiRobot(QObject):
         self._rightVelChanged.emit()
 
 app = QApplication(sys.argv)
-robot = GuiRobot()
 
 kinematics = kine.KinematicModel(axel_width = 0.2, left_wheel_r = 0.03, right_wheel_r = 0.03)
 robot_state = hal.RobotInterface(kinematics)
+robot = GuiRobot(robot_state)
+
+@behavior.task
+def SetPosToGui(state):
+    robot.pose = state.pose
+
 simulation_tree = behavior.ParallelAll(
     remote.SendSensorsAndReadCommand(robot_state, None, local_port=8000),
     hal.ComputeWheelCommands(robot_state),
     simulation.SimulateMotor(robot_state.left_wheel),
     simulation.SimulateMotor(robot_state.right_wheel),
-    hal.ComputeOdometry(robot_state, output=robot)) 
+    hal.ComputeOdometry(robot_state),
+    SetPosToGui(robot_state)) 
 
 engine = QQmlApplicationEngine()
 engine.rootContext().setContextProperty("robot", robot)
