@@ -18,7 +18,7 @@ ip = 'localhost'
 scheduler = QtScheduler(QtCore)
 
 # Create a TCP/IP socket
-sock = RemoteControlSocket(port = 8001, remote_address = (ip, 8000))
+sock = RemoteControlSocket(port = 8004, remote_address = (ip, 8002))
 
 class Backend(QObject):
     def __init__(self, parent=None):
