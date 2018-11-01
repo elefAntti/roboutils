@@ -107,7 +107,8 @@ class Task:
             if status == True:
                 return State.Success
             return State.Running
-        except:
+        except Exception as e:
+            print(str(e))
             return State.Failure
 
 #A decorator to construct a task from any function
@@ -139,4 +140,26 @@ class Condition:
 def condition(fcn):
     def factory(*args):
         return Condition(fcn, *args)
+    return factory
+
+
+class Guard:
+    def __init__(self, fcn, *args):
+        self.args = args
+        self.fcn = fcn
+    def start(self):
+        pass
+    def update(self):
+        status = self.fcn(*self.args)
+        if status == False:
+            return State.Failure
+        return State.Running
+
+
+#A decorator to construct a guard from any function
+# - If function returns false, guard fails
+# - If function returns true, it continues execution
+def guard(fcn):
+    def factory(*args):
+        return Guard(fcn, *args)
     return factory
