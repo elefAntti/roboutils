@@ -1,9 +1,11 @@
 from enum import Enum
+from functools import wraps
 
 class State(Enum):
     Running = 0
     Success = 1
     Failure = 2
+
 
 class ParallelAny:
     """
@@ -30,6 +32,7 @@ of the children for that update.
                     child.completed = True
         return State.Running if running else State.Failure
 
+
 class ParallelAll:
     """
 Behavior tree node that executes the child tasks in parallel
@@ -55,8 +58,9 @@ for that update.
                     child.completed = True
         return State.Running if running else State.Success
 
-#Executes children in order until all of them complete or first one fails
+
 class Sequence:
+    """Executes children in order until all of them complete or first one fails"""
     def __init__(self, *children):
         self.children = children
     def start(self):
@@ -75,8 +79,9 @@ class Sequence:
             return State.Failure
         return State.Running
 
-#Executes children in order until all of them fail or first one succeeds
+
 class Selector:
+    """Executes children in order until all of them fail or first one succeeds"""
     def __init__(self, *children):
         self.children = children
     def start(self):
@@ -95,6 +100,7 @@ class Selector:
             return State.Success
         return State.Running
 
+
 class Task:
     def __init__(self, fcn, *args):
         self.args = args
@@ -111,10 +117,11 @@ class Task:
             print(str(e))
             return State.Failure
 
-#A decorator to construct a task from any function
-# - If function throws, task fails
-# - If function returns true, it succeeds
 def task(fcn):
+    """A decorator to construct a task from any function
+    - If function throws, task fails
+    - If function returns true, it succeeds"""
+    @wraps(fcn)
     def factory(*args):
         return Task(fcn, *args)
     return factory
@@ -134,10 +141,11 @@ class Condition:
         return State.Running
 
 
-#A decorator to construct a condition from any function
-# - If function returns false, condition fails
-# - If function returns true, it succeeds
 def condition(fcn):
+    """A decorator to construct a condition from any function
+    - If function returns false, condition fails
+    - If function returns true, it succeeds"""
+    @wraps(fcn)
     def factory(*args):
         return Condition(fcn, *args)
     return factory
@@ -156,10 +164,11 @@ class Guard:
         return State.Running
 
 
-#A decorator to construct a guard from any function
-# - If function returns false, guard fails
-# - If function returns true, it continues execution
 def guard(fcn):
+    """A decorator to construct a guard from any function
+    - If function returns false, guard fails
+    - If function returns true, it continues execution"""
+    @wraps(fcn)
     def factory(*args):
         return Guard(fcn, *args)
     return factory
