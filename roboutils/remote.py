@@ -15,19 +15,21 @@ class RemoteControlSocket:
         self.rx_seq_no = 0 
         self.remote_address = remote_address
     def receive(self):
+        message = {}
         try:
-            data, client = self.sock.recvfrom(1024)
-            new_message = msgpack.loads(data, encoding = "UTF-8")
-            if new_message[0] < 10:
-                self.tx_seq_no = 0
-            if new_message[0] < 10 or new_message[0] > self.rx_seq_no:
-                self.rx_seq_no = new_message[0]
-                self.remote_address = client
-                self.last_received = time.time()
-                return new_message[1]
+            while True:
+                data, client = self.sock.recvfrom(1024)
+                new_message = msgpack.loads(data, encoding = "UTF-8")
+                if new_message[0] < 10:
+                    self.tx_seq_no = 0
+                if new_message[0] < 10 or new_message[0] > self.rx_seq_no:
+                    self.rx_seq_no = new_message[0]
+                    self.remote_address = client
+                    self.last_received = time.time()
+                    message = new_message[1]
         except BlockingIOError:
             pass
-        return {}
+        return message
     def send(self, message):
         if self.remote_address:
             data = msgpack.dumps([self.tx_seq_no, message], encoding = "UTF-8")
