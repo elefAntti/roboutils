@@ -56,7 +56,7 @@ class Command(namedtuple("command", ["velocity", "angularVelocity"])):
 WheelCommand = namedtuple("WheelCommand", ["left_angular_vel", "right_angular_vel"])
 
 class KinematicModel:
-    slots = ("axel_width", "left_wheel_r", "right_wheel_r")
+    __slots__ = ("axel_width", "left_wheel_r", "right_wheel_r")
     def __init__(self, axel_width, left_wheel_r, right_wheel_r):
         self.axel_width = axel_width
         self.left_wheel_r = left_wheel_r

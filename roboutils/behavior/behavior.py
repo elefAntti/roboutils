@@ -14,6 +14,7 @@ Fails when all of the children fail,
 Succeeds as soon as one succeeds: does not evaluate the rest
 of the children for that update.
     """
+    __slots__ = ("children", "completed")
     def __init__(self, *children):
         self.children = children
     def start(self):
@@ -40,6 +41,7 @@ Completes when all of the children are complete,
 Fails as soon as one fails: does not evaluate the rest of the children
 for that update.
     """
+    __slots__ = ("children", "completed")
     def __init__(self, *children):
         self.children = children
     def start(self):
@@ -59,8 +61,9 @@ for that update.
         return State.Running if running else State.Success
 
 
-class Sequence:
+class Sequence(object):
     """Executes children in order until all of them complete or first one fails"""
+    __slots__ = ("children", "currentChild", "completed")
     def __init__(self, *children):
         self.children = children
     def start(self):
@@ -80,8 +83,9 @@ class Sequence:
         return State.Running
 
 
-class Selector:
+class Selector(object):
     """Executes children in order until all of them fail or first one succeeds"""
+    __slots__ = ("children", "currentChild", "completed")
     def __init__(self, *children):
         self.children = children
     def start(self):
@@ -101,7 +105,8 @@ class Selector:
         return State.Running
 
 
-class Task:
+class Task(object):
+    __slots__ = ("fcn", "args", "completed")
     def __init__(self, fcn, *args):
         self.args = args
         self.fcn = fcn
@@ -126,7 +131,8 @@ def task(fcn):
         return Task(fcn, *args)
     return factory
 
-class Condition:
+class Condition(object):
+    __slots__ = ("fcn", "args", "completed")
     def __init__(self, fcn, *args):
         self.args = args
         self.fcn = fcn
@@ -151,7 +157,8 @@ def condition(fcn):
     return factory
 
 
-class Guard:
+class Guard(object):
+    __slots__ = ("fcn", "args", "completed")
     def __init__(self, fcn, *args):
         self.args = args
         self.fcn = fcn

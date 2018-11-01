@@ -1,7 +1,9 @@
 import time
 from .behavior import State
 
-class Delay:
+class Delay(object):
+    """Delay for 'duration' seconds then return success"""
+    __slots__ = ("duration", "start_time", "completed")
     def __init__(self, duration):
         self.duration = duration
     def start(self):
@@ -11,7 +13,10 @@ class Delay:
             return State.Success
         return State.Running
 
-class RateLimit:
+class RateLimit(object):
+    """Call child task at most every 'duration' seconds,
+return 'Running' otherwise"""
+    __slots__ = ("duration", "start_time", "child", "completed")
     def __init__(self, duration, child):
         self.duration = duration
         self.child = child
