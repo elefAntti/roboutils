@@ -1,5 +1,16 @@
 from .behavior import State
 
+class Repeat:
+    def __init__(self, child):
+        self.child = child
+    def start(self):
+        self.child.start()
+    def update(self):
+        status = self.child.update()
+        if status != State.Running:
+            self.child.start()
+        return State.Running
+
 class RepeatUntilFail:
     def __init__(self, child):
         self.child = child
