@@ -107,6 +107,7 @@ class GuiRobot(QObject):
         self._rightVelChanged.emit()
 
 app = QApplication(sys.argv)
+sock = remote.RemoteControlSocket(port = 8000)
 
 kinematics = kine.KinematicModel(axel_width = 0.2, left_wheel_r = 0.03, right_wheel_r = 0.03)
 robot_state = hal.RobotInterface(kinematics)
@@ -117,12 +118,13 @@ def SetPosToGui(state):
     robot.pose = state.pose
 
 simulation_tree = behavior.ParallelAll(
-    remote.SendSensorsAndReadCommand(robot_state, None, local_port=8000),
+    remote.UDPReceive(robot_state, sock),
     hal.ComputeWheelCommands(robot_state),
     simulation.SimulateMotor(robot_state.left_wheel),
     simulation.SimulateMotor(robot_state.right_wheel),
     hal.ComputeOdometry(robot_state),
-    SetPosToGui(robot_state)) 
+    SetPosToGui(robot_state),
+    remote.SendSensors(robot_state, sock)) 
 
 engine = QQmlApplicationEngine()
 engine.rootContext().setContextProperty("robot", robot)
