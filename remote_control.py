@@ -1,10 +1,8 @@
 import sys
-import rx
 import msgpack
 
-from rx.concurrency import QtScheduler
 from PyQt5 import QtCore
-from PyQt5.QtCore import QObject, QUrl, pyqtSignal, pyqtSlot, pyqtProperty
+from PyQt5.QtCore import QObject, QUrl, pyqtSignal, pyqtSlot, pyqtProperty, QTimer
 from PyQt5.QtQml import QQmlApplicationEngine
 from PyQt5.QtWidgets import QApplication
 from collections import defaultdict
@@ -15,7 +13,6 @@ release = False
 
 #ip = '192.168.43.21' # TODO: Replace IP here!
 ip = 'localhost'
-scheduler = QtScheduler(QtCore)
 
 # Create a TCP/IP socket
 sock = RemoteControlSocket(port = 8004, remote_address = (ip, 8002))
@@ -57,7 +54,7 @@ class Backend(QObject):
             "turn_command": turn_speed,
             "state": self.robot_state }
 
-    def send_packet(self, _):
+    def send_packet(self):
         command = self.get_command()
         #print("Sending: %s"%str(command))
         sock.send(command)
@@ -72,6 +69,9 @@ engine.load('qml/keys.qml')
 win = engine.rootObjects()[0]
 win.show()
 
-rx.Observable.interval(1000/30, scheduler=scheduler).subscribe(backend.send_packet)
+timer = QTimer()
+timer.timeout.connect(lambda: backend.send_packet())
+timer.setSingleShot(False)
+timer.start(30)
 
 app.exec_()

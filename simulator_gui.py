@@ -1,10 +1,7 @@
 import sys
 
-import rx
-from rx.subjects import BehaviorSubject
-from rx.concurrency import QtScheduler
 from PyQt5 import QtCore
-from PyQt5.QtCore import QObject, QUrl, pyqtSignal, pyqtSlot, pyqtProperty
+from PyQt5.QtCore import QObject, QUrl, pyqtSignal, pyqtSlot, pyqtProperty, QTimer
 from PyQt5.QtQml import QQmlApplicationEngine
 from PyQt5.QtWidgets import QApplication
 
@@ -14,8 +11,6 @@ from roboutils import hal
 from roboutils.hal import simulation
 from roboutils import remote
 from roboutils import behavior
-
-scheduler = QtScheduler(QtCore)
 
 class GuiRobot(QObject):
     _xChanged = pyqtSignal()
@@ -143,8 +138,10 @@ engine.load('qml/main.qml')
 win = engine.rootObjects()[0]
 win.show()
 
+timer = QTimer()
+timer.timeout.connect(lambda: simulation_tree.update())
+timer.setSingleShot(False)
 simulation_tree.start()
-rx.Observable.interval(30, scheduler=scheduler)\
-    .subscribe(lambda _:simulation_tree.update())
+timer.start(30)
 
 app.exec_()
