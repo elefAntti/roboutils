@@ -21,6 +21,11 @@ ApplicationWindow {
 				}
 				CheckBox
 				{
+					text: "Line sensor"
+					onClicked: robot.line_sensor = checked;
+				}
+				CheckBox
+				{
 					text: "Right bumper"
 					onClicked: robot.right_bumper = checked;
 				}

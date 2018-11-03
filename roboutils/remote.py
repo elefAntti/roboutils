@@ -72,5 +72,6 @@ def SendSensors(robot, socket):
             "left_bumper_hit",
             "right_bumper_hit",
             "travelled_distance",
-            "heading_rad")
+            "heading_rad",
+            "line_sensor")
     return UDPSendFields(robot.__dict__, socket, fields_to_send )

@@ -23,6 +23,7 @@ class RobotInterface:
         self.velocity_command = 0
         self.left_wheel = Motor()
         self.right_wheel = Motor()
+        self.line_sensor = False #TODO: Replace this with proper light sensor
 
     @property
     def command(self):

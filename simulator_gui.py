@@ -25,6 +25,7 @@ class GuiRobot(QObject):
     _rightVelChanged = pyqtSignal()
     _left_bumper_changed = pyqtSignal()
     _right_bumper_changed = pyqtSignal()
+    _line_sensor_changed = pyqtSignal()
     def __init__(self, robot_state, parent=None):
         super().__init__(parent)
         self._x = 0
@@ -87,6 +88,15 @@ class GuiRobot(QObject):
     def right_bumper(self, value):
         self.robot_state.right_bumper_hit = value
         self._right_bumper_changed.emit()
+
+    @pyqtProperty('QVariant', notify=_line_sensor_changed)
+    def line_sensor(self):
+        return self.robot_state.line_sensor
+
+    @right_bumper.setter
+    def line_sensor(self, value):
+        self.robot_state.line_sensor = value
+        self._line_sensor_changed.emit()
 
     @property
     def pose(self):

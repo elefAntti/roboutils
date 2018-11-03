@@ -39,6 +39,11 @@ class Command(namedtuple("command", ["velocity", "angularVelocity"])):
     def curvature(self):
         return self.angularVelocity / self.velocity
 
+    def reverse(self):
+        return Command(
+            velocity = -self.velocity,
+            angularVelocity = -self.angularVelocity)
+
     def integrate(self, time):
         if self.straight:
             distance = self.velocity * time
