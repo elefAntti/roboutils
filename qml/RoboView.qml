@@ -17,6 +17,7 @@ Canvas
     property real mapYMin: -2.5;
     property real mapYMax: 2.5;
 
+
     onRobotHeadingChanged:
     {
         robocanvas.requestPaint();

@@ -12,6 +12,9 @@ from roboutils.hal import simulation
 from roboutils import remote
 from roboutils import behavior
 
+from roboutils.worldsimulator import World, Line
+
+
 class GuiRobot(QObject):
     _xChanged = pyqtSignal()
     _yChanged = pyqtSignal()
@@ -117,6 +120,8 @@ sock = remote.RemoteControlSocket(port = 8000)
 kinematics = kine.KinematicModel(axel_width = 0.2, left_wheel_r = 0.03, right_wheel_r = 0.03)
 robot_state = hal.RobotInterface(kinematics)
 robot = GuiRobot(robot_state)
+
+world = World([Line([Vec2(0,0), Vec2(0, 0.7), Vec2(0.7, 0.7)], 0.05)])
 
 @behavior.task
 def SetPosToGui(state):
