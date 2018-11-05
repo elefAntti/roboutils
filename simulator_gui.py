@@ -1,8 +1,8 @@
 import sys
 
 from PyQt5 import QtCore
-from PyQt5.QtCore import QObject, QUrl, pyqtSignal, pyqtSlot, pyqtProperty, QTimer
-from PyQt5.QtQml import QQmlApplicationEngine
+from PyQt5.QtCore import QObject, QUrl, pyqtSignal, pyqtSlot, pyqtProperty, QTimer, QPointF
+from PyQt5.QtQml import QQmlApplicationEngine, QQmlListProperty
 from PyQt5.QtWidgets import QApplication
 
 from roboutils.utils import Transform, Vec2
@@ -114,6 +114,32 @@ class GuiRobot(QObject):
         self._leftVelChanged.emit()
         self._rightVelChanged.emit()
 
+class GuiLine(QObject):
+    def __init__(self, p1, p2, width, parent=None):
+        super().__init__(parent)
+        self._p1 = p1
+        self._p2 = p2
+        self._width = width
+    @pyqtProperty(QPointF)
+    def p1(self):
+        return self._p1
+    @pyqtProperty(QPointF)
+    def p2(self):
+        return self._p2
+    @pyqtProperty(float)
+    def width(self):
+        return self._width
+
+class GuiWorld(QObject):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._lines = [
+            GuiLine(QPointF(0,0), QPointF(0, 0.7), 0.05),
+            GuiLine(QPointF(0, 0.7), QPointF(0.7, 0.7), 0.05)]
+    @pyqtProperty(QQmlListProperty)
+    def lines(self):
+        return QQmlListProperty(GuiLine, self, self._lines)
+
 app = QApplication(sys.argv)
 sock = remote.RemoteControlSocket(port = 8000)
 
@@ -122,6 +148,7 @@ robot_state = hal.RobotInterface(kinematics)
 robot = GuiRobot(robot_state)
 
 world = World([Line([Vec2(0,0), Vec2(0, 0.7), Vec2(0.7, 0.7)], 0.05)])
+gui_world = GuiWorld()
 
 @behavior.task
 def SetPosToGui(state):
@@ -138,6 +165,7 @@ simulation_tree = behavior.ParallelAll(
 
 engine = QQmlApplicationEngine()
 engine.rootContext().setContextProperty("robot", robot)
+engine.rootContext().setContextProperty("world", gui_world)
 engine.load('qml/main.qml')
 
 win = engine.rootObjects()[0]
