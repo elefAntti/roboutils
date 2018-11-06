@@ -91,7 +91,7 @@ class GuiRobot(QObject):
     def line_sensor(self):
         return self.robot_state.line_sensor
 
-    @right_bumper.setter
+    @line_sensor.setter
     def line_sensor(self, value):
         self.robot_state.line_sensor = value
         self._line_sensor_changed.emit()

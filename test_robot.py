@@ -45,8 +45,7 @@ robot_behavior = \
             ParallelAll(
                 SelectedMode(remote_command, 2),
                 Print("Entering mode 2"),
-                FollowLine(robot_state, lambda: robot_state.line_sensor)
-            ),
+                FollowLine(robot_state, lambda: robot_state.line_sensor)),
             ParallelAll(
                 SelectedMode(remote_command, 3),
                 Print("Entering mode 3"),
