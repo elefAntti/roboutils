@@ -114,31 +114,33 @@ class GuiRobot(QObject):
         self._leftVelChanged.emit()
         self._rightVelChanged.emit()
 
-class GuiLine(QObject):
-    def __init__(self, p1, p2, width, parent=None):
+class GuiLineSegment(QObject):
+    def __init__(self, beg, end, width, parent=None):
         super().__init__(parent)
-        self._p1 = p1
-        self._p2 = p2
+        self._beg = beg
+        self._end = end
         self._width = width
     @pyqtProperty(QPointF)
-    def p1(self):
-        return self._p1
+    def beg(self):
+        return self._beg
     @pyqtProperty(QPointF)
-    def p2(self):
-        return self._p2
+    def end(self):
+        return self._end
     @pyqtProperty(float)
     def width(self):
         return self._width
 
 class GuiWorld(QObject):
-    def __init__(self, parent=None):
+    def __init__(self, world:World, parent=None):
         super().__init__(parent)
-        self._lines = [
-            GuiLine(QPointF(0,0), QPointF(0, 0.7), 0.05),
-            GuiLine(QPointF(0, 0.7), QPointF(0.7, 0.7), 0.05)]
+        self._lines = []
+        for line in world.lines:
+            for lineSegment in line.segmentList:
+                self._lines.append(GuiLineSegment(QPointF(lineSegment.beg.x, lineSegment.beg.y), \
+                QPointF(lineSegment.end.x, lineSegment.end.y), lineSegment.width))
     @pyqtProperty(QQmlListProperty)
     def lines(self):
-        return QQmlListProperty(GuiLine, self, self._lines)
+        return QQmlListProperty(GuiLineSegment, self, self._lines)
 
 app = QApplication(sys.argv)
 sock = remote.RemoteControlSocket(port = 8000)
@@ -148,11 +150,16 @@ robot_state = hal.RobotInterface(kinematics)
 robot = GuiRobot(robot_state)
 
 world = World([Line([Vec2(0,0), Vec2(0, 0.7), Vec2(0.7, 0.7)], 0.05)])
-gui_world = GuiWorld()
+gui_world = GuiWorld(world)
 
 @behavior.task
-def SetPosToGui(state):
+def UpdateGui(state):
     robot.pose = state.pose
+    robot._line_sensor_changed.emit()
+
+@behavior.task
+def SimulateLineSensor(state, world:World):
+    state.line_sensor = world.isOnLine(robot.pose.offset)
 
 simulation_tree = behavior.ParallelAll(
     remote.UDPReceive(robot_state, sock),
@@ -160,13 +167,14 @@ simulation_tree = behavior.ParallelAll(
     simulation.SimulateMotor(robot_state.left_wheel),
     simulation.SimulateMotor(robot_state.right_wheel),
     hal.ComputeOdometry(robot_state),
-    SetPosToGui(robot_state),
+    SimulateLineSensor(robot_state, world),
+    UpdateGui(robot_state),
     remote.SendSensors(robot_state, sock)) 
 
 engine = QQmlApplicationEngine()
 engine.rootContext().setContextProperty("robot", robot)
 engine.rootContext().setContextProperty("world", gui_world)
-engine.load('qml/main.qml')
+engine.load('qml/SimulatorWindow.qml')
 
 win = engine.rootObjects()[0]
 win.show()
