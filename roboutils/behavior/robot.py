@@ -3,6 +3,7 @@ from . import decorator
 from ..utils import kinematics as kine
 import math
 import time
+from ..hal import RobotInterface
 
 def sign(flt):
     if flt >= 0:
@@ -103,7 +104,7 @@ def Stop(robot):
 def ReverseCurrentCommand(robot):
     robot.command = robot.command.reverse()
     return True
-
+    
 class _FollowLine:
     """Follow eg. a line on the ground"""
     def __init__(self, robot, on_the_line, curvature = 1.9, speed = 0.033, min_duration = 1.5, max_dir_change = deg2rad(15)):
@@ -146,6 +147,34 @@ def FollowLine(
         WaitForRotation(robot, lambda: follow.line_dir - robot.heading_rad),
         Stop(robot))
 
+@behavior.task
+def WaitUntilSeesLine(robot:RobotInterface):
+    return robot.line_sensor
+
+@behavior.task
+def WaitUntilSeesNoLine(robot:RobotInterface):
+    return not robot.line_sensor
+
+def Wiggle(robot):
+    return behavior.Sequence(
+        TurnOnSpot(robot, deg2rad(5)),
+        TurnOnSpot(robot, deg2rad(-10)),
+        TurnOnSpot(robot, deg2rad(20)),
+        TurnOnSpot(robot, deg2rad(-40)),
+        TurnOnSpot(robot, deg2rad(80)),
+        TurnOnSpot(robot, deg2rad(-160))
+    )
+
+def ValheFollowLine(robot):
+    return decorator.Repeat(behavior.Sequence(
+
+        DriveWithVelocity(robot, 0.3),
+        WaitUntilSeesNoLine(robot),
+        behavior.ParallelAny(
+            WaitUntilSeesLine(robot),
+            Wiggle(robot)
+        )
+    ))
 
 @behavior.condition
 def HasFrontBumper(robot):

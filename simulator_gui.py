@@ -149,7 +149,7 @@ kinematics = kine.KinematicModel(axel_width = 0.2, left_wheel_r = 0.03, right_wh
 robot_state = hal.RobotInterface(kinematics)
 robot = GuiRobot(robot_state)
 
-world = World([Line([Vec2(0,0), Vec2(0, 0.7), Vec2(0.7, 0.7)], 0.05)])
+world = World([Line([Vec2(0,0), Vec2(0.1, 0.7), Vec2(0.7, 0.8)], 0.10)])
 gui_world = GuiWorld(world)
 
 @behavior.task
@@ -159,7 +159,7 @@ def UpdateGui(state):
 
 @behavior.task
 def SimulateLineSensor(state, world:World):
-    state.line_sensor = world.isOnLine(robot.pose.offset)
+    state.line_sensor = world.isOnLine(robot.pose.applyTo(Vec2(0.05, 0)))
 
 simulation_tree = behavior.ParallelAll(
     remote.UDPReceive(robot_state, sock),
