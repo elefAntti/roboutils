@@ -87,9 +87,9 @@ class Vec2(namedtuple('Vec2', ['x', 'y'])):
         return (self - other).length
 
     def normal(self):
-        normalX = self.x
-        normalY = -self.y
-        return Vec2(normalX, normalY)
+        return Vec2(
+            x = -self.y,
+            y = self.x)
 
 class Transform(namedtuple('Transform', ['heading', 'offset'])):
     __slots__ = ()
