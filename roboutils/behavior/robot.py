@@ -157,12 +157,16 @@ def WaitUntilSeesNoLine(robot:RobotInterface):
 
 def Wiggle(robot):
     return behavior.Sequence(
-        TurnOnSpot(robot, deg2rad(5)),
-        TurnOnSpot(robot, deg2rad(-10)),
-        TurnOnSpot(robot, deg2rad(20)),
-        TurnOnSpot(robot, deg2rad(-40)),
-        TurnOnSpot(robot, deg2rad(80)),
-        TurnOnSpot(robot, deg2rad(-160))
+        TurnOnSpot(robot, deg2rad(5)), #5 left
+        TurnOnSpot(robot, deg2rad(-10)), #5 right
+        TurnOnSpot(robot, deg2rad(20)), #15 left
+        TurnOnSpot(robot, deg2rad(-35)), #15 right
+        TurnOnSpot(robot, deg2rad(45)), #30 left
+        TurnOnSpot(robot, deg2rad(-60)), #30 right
+        TurnOnSpot(robot, deg2rad(90)), #60 left
+        TurnOnSpot(robot, deg2rad(-120)), #60 right
+        TurnOnSpot(robot, deg2rad(170)), #110 left
+        TurnOnSpot(robot, deg2rad(-220)), #110 right
     )
 
 def ValheFollowLine(robot):
