@@ -54,7 +54,7 @@ class Vec2(namedtuple('Vec2', ['x', 'y'])):
     def __rmul__(self, scalar):
         return self * scalar
 
-    def __div__(self, scalar):
+    def __truediv__(self, scalar):
         if type(scalar) != float and type(scalar) != int:
             raise TypeError("Can only divide vector with scalars")
         return Vec2(
