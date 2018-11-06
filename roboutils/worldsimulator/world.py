@@ -20,16 +20,16 @@ class Line:
 
 
 class LineSegment:
-    def __init__(self, lineBeg:vec2.Vec2, lineEnd:vec2.Vec2, width:float):
-        self.lineBeg = lineBeg
-        self.lineEnd = lineEnd
+    def __init__(self, beg:vec2.Vec2, end:vec2.Vec2, width:float):
+        self.beg = beg
+        self.end = end
         self.width = width
 
     def isOnLineSegment(self, point:vec2.Vec2) -> bool:
-        seg = self.lineEnd - self.lineBeg
+        seg = self.end - self.beg
         segNormal = seg.normal()
         
-        point = point - self.lineBeg
+        point = point - self.beg
         xProjection = point.projectionOn(seg)
         yProjection = point.projectionOn(segNormal)
 
