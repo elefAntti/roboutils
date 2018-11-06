@@ -37,6 +37,7 @@ ApplicationWindow {
 				robotY: robot.y;
 				robotHeading: robot.heading;
 				lines: world.lines;
+				seesLine: robot.line_sensor;
 			}
 		}
 	}
