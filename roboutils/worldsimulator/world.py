@@ -1,15 +1,7 @@
 from ..utils import vec2
 from typing import List
 
-class World:
-    def __init__(self, lines:List[Line]):
-        self.lines = lines
 
-    def isOnLine(self, point:vec2.Vec2) -> bool:
-        for line in self.lines:
-            if line.isOnLine(point):
-                return True
-        return False
 
 class Line:
     def __init__(self, points:List[vec2.Vec2], width):
@@ -45,3 +37,13 @@ class LineSegment:
             and xProjection <= seg.length \
             and -self.width / 2 < yProjection \
             and yProjection < self.width / 2
+
+class World:
+    def __init__(self, lines:List[Line]):
+        self.lines = lines
+
+    def isOnLine(self, point:vec2.Vec2) -> bool:
+        for line in self.lines:
+            if line.isOnLine(point):
+                return True
+        return False
