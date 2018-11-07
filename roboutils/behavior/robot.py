@@ -1,21 +1,10 @@
 from . import behavior
 from . import decorator
 from ..utils import kinematics as kine
+from ..utils.math_utils import deg2rad, sign, normalizeAngle
 import math
 import time
 from ..hal import RobotInterface
-
-def sign(flt):
-    if flt >= 0:
-        return 1
-    else:
-        return -1
-
-def normalizeAngle(angle):
-    return angle - math.pi * 2.0 * math.floor((angle + math.pi) / (math.pi * 2.0))
-
-def deg2rad(angle):
-    return angle * math.pi / 180.0
 
 class DriveForward:
     def __init__(self, robot, distance, speed = 0.14, accuracy = 0.01, slowdown_dist = 0.1):

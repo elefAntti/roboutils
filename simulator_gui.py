@@ -9,6 +9,7 @@ from roboutils.utils import Transform, Vec2
 import roboutils.utils.kinematics as kine
 from roboutils import hal
 from roboutils.hal import simulation
+from roboutils.hal.differential_drive import ComputeWheelCommands, ComputeOdometry
 from roboutils import remote
 from roboutils import behavior
 
@@ -163,11 +164,11 @@ def SimulateLineSensor(state, world:World):
 
 simulation_tree = behavior.ParallelAll(
     remote.UDPReceive(robot_state, sock),
-    hal.ComputeWheelCommands(robot_state),
+    ComputeWheelCommands(robot_state),
     simulation.SimulateMotor(robot_state.left_wheel),
     simulation.SimulateMotor(robot_state.right_wheel),
-    hal.ComputeOdometry(robot_state),
     SimulateLineSensor(robot_state, world),
+    ComputeOdometry(robot_state),
     UpdateGui(robot_state),
     remote.SendSensors(robot_state, sock)) 
 
