@@ -1,7 +1,7 @@
 from . import behavior
 from . import decorator
 from ..utils import kinematics as kine
-from ..utils.math_utils import deg2rad, sign, normalizeAngle
+from ..utils.math_utils import deg2rad, rad2deg, sign, normalizeAngle
 import math
 import time
 from ..hal import RobotInterface
@@ -140,32 +140,48 @@ def FollowLine(
 def WaitUntilSeesLine(robot:RobotInterface):
     return robot.line_sensor
 
+class RecordAngle:
+    def __init__(self, robot:RobotInterface):
+        self.robot = robot
+        self.angleStart = None
+        self.angleDelta = 0
+        self.angleOldDelta = deg2rad(5)
+    def start(self):
+        self.angleStart = self.robot.heading_rad
+        self.angleOldDelta = self.angleDelta
+    def update(self):
+        self.angleDelta = self.robot.heading_rad - self.angleStart
+        return behavior.State.Running
+
 @behavior.task
 def WaitUntilSeesNoLine(robot:RobotInterface):
     return not robot.line_sensor
 
-def Wiggle(robot):
+def Wiggle(robot, angleDelta):
+    move = behavior.Sequence()
+    if angleDelta == 0 or angleDelta >= 90:
+        return behavior.Sequence(LookBothWays(robot, 5))
+    while angleDelta < 90 :
+        move.append(LookBothWays(robot, angleDelta))
+        angleDelta *= 2
+    return move
+
+def LookBothWays(robot, degrees:int):
     return behavior.Sequence(
-        TurnOnSpot(robot, deg2rad(5)), #5 left
-        TurnOnSpot(robot, deg2rad(-10)), #5 right
-        TurnOnSpot(robot, deg2rad(20)), #15 left
-        TurnOnSpot(robot, deg2rad(-35)), #15 right
-        TurnOnSpot(robot, deg2rad(45)), #30 left
-        TurnOnSpot(robot, deg2rad(-60)), #30 right
-        TurnOnSpot(robot, deg2rad(90)), #60 left
-        TurnOnSpot(robot, deg2rad(-120)), #60 right
-        TurnOnSpot(robot, deg2rad(170)), #110 left
-        TurnOnSpot(robot, deg2rad(-220)), #110 right
+        TurnOnSpot(robot, deg2rad(degrees)),
+        TurnOnSpot(robot, deg2rad(-degrees))
     )
 
 def ValheFollowLine(robot):
+    recordAngle = RecordAngle(robot)
     return decorator.Repeat(behavior.Sequence(
 
         DriveWithVelocity(robot, 0.3),
         WaitUntilSeesNoLine(robot),
         behavior.ParallelAny(
+            recordAngle,
             WaitUntilSeesLine(robot),
-            Wiggle(robot)
+            lambda: Wiggle(robot, lambda: recordAngle.angleOldDelta)
         )
     ))
 
