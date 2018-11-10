@@ -60,51 +60,6 @@ for that update.
                     child.completed = True
         return State.Running if running else State.Success
 
-
-class Sequence(object):
-    """Executes children in order until all of them complete or first one fails"""
-    __slots__ = ("children", "currentChild", "completed")
-    def __init__(self, *children):
-        self.children = children
-    def start(self):
-        self.currentChild = 0
-        self.children[self.currentChild].start()
-    def update(self):
-        if self.currentChild >= len(self.children):
-            return State.Success
-        state = self.children[self.currentChild].update()
-        if state == State.Success:
-            self.currentChild += 1
-            if self.currentChild >= len(self.children):
-                return State.Success
-            self.children[self.currentChild].start()
-        elif state == State.Failure:
-            return State.Failure
-        return State.Running
-
-
-class Selector(object):
-    """Executes children in order until all of them fail or first one succeeds"""
-    __slots__ = ("children", "currentChild", "completed")
-    def __init__(self, *children):
-        self.children = children
-    def start(self):
-        self.currentChild = 0
-        self.children[self.currentChild].start()
-    def update(self):
-        if self.currentChild >= len(self.children):
-            return State.Failure
-        state = self.children[self.currentChild].update()
-        if state == State.Failure:
-            self.currentChild += 1
-            if self.currentChild >= len(self.children):
-                return State.Failure
-            self.children[self.currentChild].start()
-        elif state == State.Success:
-            return State.Success
-        return State.Running
-
-
 class Task(object):
     __slots__ = ("fcn", "args", "completed")
     def __init__(self, fcn, *args):
@@ -130,6 +85,53 @@ def task(fcn):
     def factory(*args):
         return Task(fcn, *args)
     return factory
+
+class Sequence(object):
+    """Executes children in order until all of them complete or first one fails"""
+    __slots__ = ("children", "currentChild", "completed")
+    def __init__(self, *children):
+        self.children = children
+    def start(self):
+        self.currentChild = 0
+        self.children[self.currentChild].start()
+    def update(self):
+        if self.currentChild >= len(self.children):
+            return State.Success
+        state = self.children[self.currentChild].update()
+        if state == State.Success:
+            self.currentChild += 1
+            if self.currentChild >= len(self.children):
+                return State.Success
+            self.children[self.currentChild].start()
+        elif state == State.Failure:
+            return State.Failure
+        return State.Running
+    def append(self, task:Task):
+        self.children = (*self.children, task)
+
+
+
+class Selector(object):
+    """Executes children in order until all of them fail or first one succeeds"""
+    __slots__ = ("children", "currentChild", "completed")
+    def __init__(self, *children):
+        self.children = children
+    def start(self):
+        self.currentChild = 0
+        self.children[self.currentChild].start()
+    def update(self):
+        if self.currentChild >= len(self.children):
+            return State.Failure
+        state = self.children[self.currentChild].update()
+        if state == State.Failure:
+            self.currentChild += 1
+            if self.currentChild >= len(self.children):
+                return State.Failure
+            self.children[self.currentChild].start()
+        elif state == State.Success:
+            return State.Success
+        return State.Running
+
 
 class Condition(object):
     __slots__ = ("fcn", "args", "completed")
