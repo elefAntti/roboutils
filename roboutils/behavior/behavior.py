@@ -181,3 +181,37 @@ def guard(fcn):
     def factory(*args):
         return Guard(fcn, *args)
     return factory
+
+class FromGenerator:
+    def __init__(self, generator, *args):
+        self.generator = generator
+        self.args = args
+    def start(self) -> None:
+        self.iteration = self.generator(*self.args)
+        self.iteration.__next__()
+    def update(self) -> State:
+        try:
+            return self.iteration.__next__()
+        except StopIteration:
+            return State.Success
+
+def from_generator(fcn):
+    """A decorator that turns a generator into a task
+    It will be advanced once to start it, then advanced once per update.
+    The value yielded by the generator should be one of the State values.
+    If generator terminates, it is interpreted as a success
+    """
+    @wraps(fcn)
+    def factory(*args):
+        return FromGenerator(fcn, *args)
+    return factory
+
+
+def as_generator(tree):
+    """Run the tree as a generator yielding State"""
+    tree.start()
+    state = State.Running
+    yield state
+    while state == state.Running:
+        state = tree.update()
+        yield state

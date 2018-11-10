@@ -93,48 +93,30 @@ def Stop(robot):
 def ReverseCurrentCommand(robot):
     robot.command = robot.command.reverse()
     return True
-    
-class _FollowLine:
-    """Follow eg. a line on the ground"""
-    def __init__(self, robot, on_the_line, curvature = 1.9, speed = 0.033, min_duration = 1.5, max_dir_change = deg2rad(15)):
-        self.robot = robot
-        self.on_the_line = on_the_line
-        self.curvature = curvature
-        self.speed = speed
-        self.line_dir = None
-        self.min_duration = min_duration
-        self.max_dir_change = max_dir_change
-    def start(self):
-        self.previous_measurement = self.on_the_line()
-        self.line_dir = self.robot.heading_rad
-        self.start_time = time.time()
-    def update(self):
-        on_the_line = self.on_the_line()
-        if on_the_line:
-            self.robot.command = kine.Command.arc(self.speed, self.curvature)
-        else:
-            self.robot.command = kine.Command.arc(self.speed, -self.curvature)
-        if on_the_line != self.previous_measurement:
-            self.previous_measurement = on_the_line
-            self.line_dir = self.robot.heading_rad
-        if abs(self.line_dir - self.robot.heading_rad) > self.max_dir_change \
-        and time.time() - self.start_time > self.min_duration:
-            return behavior.State.Success
-        return behavior.State.Running
 
-def FollowLine(
-        robot,
-        on_the_line,
-        curvature = 1.9,
-        speed = 0.033,
-        min_duration = 1.5,
-        max_dir_change = deg2rad(15)):
-    follow = _FollowLine(robot, on_the_line, curvature, speed, min_duration, max_dir_change)
-    return behavior.Sequence(
-        follow,
-        ReverseCurrentCommand(robot),
-        WaitForRotation(robot, lambda: follow.line_dir - robot.heading_rad),
-        Stop(robot))
+@behavior.from_generator   
+def PavelFollowLine(robot, on_the_line, curvature = 1.9, speed = 0.033, min_duration = 1.5, max_dir_change = deg2rad(15)):
+        previous_measurement = on_the_line()
+        line_dir = robot.heading_rad
+        start_time = time.time()
+        yield 
+        while abs(line_dir - robot.heading_rad) < max_dir_change \
+            or time.time() - start_time < min_duration:
+            on_the_line_now = on_the_line()
+            if on_the_line_now:
+                robot.command = kine.Command.arc(speed, curvature)
+            else:
+                robot.command = kine.Command.arc(speed, -curvature)
+            if on_the_line_now != previous_measurement:
+                previous_measurement = on_the_line_now
+                line_dir = robot.heading_rad
+            yield behavior.State.Running
+        end_part = behavior.Sequence(
+            ReverseCurrentCommand(robot),
+            WaitForRotation(robot, line_dir - robot.heading_rad),
+            Stop(robot))
+        for state in behavior.as_generator(end_part):
+            yield state
 
 @behavior.task
 def WaitUntilSeesLine(robot:RobotInterface):
