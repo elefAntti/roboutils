@@ -11,3 +11,6 @@ def normalizeAngle(angle):
 
 def deg2rad(angle):
     return angle * math.pi / 180.0
+
+def rad2deg(angle):
+    return angle * 180 / math.pi
