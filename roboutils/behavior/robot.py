@@ -4,6 +4,7 @@ from ..utils import kinematics as kine
 from ..utils.math_utils import deg2rad, sign, normalizeAngle
 import math
 import time
+from ..hal import RobotInterface
 
 class DriveForward:
     def __init__(self, robot, distance, speed = 0.14, accuracy = 0.01, slowdown_dist = 0.1):
@@ -92,7 +93,7 @@ def Stop(robot):
 def ReverseCurrentCommand(robot):
     robot.command = robot.command.reverse()
     return True
-
+    
 class _FollowLine:
     """Follow eg. a line on the ground"""
     def __init__(self, robot, on_the_line, curvature = 1.9, speed = 0.033, min_duration = 1.5, max_dir_change = deg2rad(15)):
@@ -135,6 +136,38 @@ def FollowLine(
         WaitForRotation(robot, lambda: follow.line_dir - robot.heading_rad),
         Stop(robot))
 
+@behavior.task
+def WaitUntilSeesLine(robot:RobotInterface):
+    return robot.line_sensor
+
+@behavior.task
+def WaitUntilSeesNoLine(robot:RobotInterface):
+    return not robot.line_sensor
+
+def Wiggle(robot):
+    return behavior.Sequence(
+        TurnOnSpot(robot, deg2rad(5)), #5 left
+        TurnOnSpot(robot, deg2rad(-10)), #5 right
+        TurnOnSpot(robot, deg2rad(20)), #15 left
+        TurnOnSpot(robot, deg2rad(-35)), #15 right
+        TurnOnSpot(robot, deg2rad(45)), #30 left
+        TurnOnSpot(robot, deg2rad(-60)), #30 right
+        TurnOnSpot(robot, deg2rad(90)), #60 left
+        TurnOnSpot(robot, deg2rad(-120)), #60 right
+        TurnOnSpot(robot, deg2rad(170)), #110 left
+        TurnOnSpot(robot, deg2rad(-220)), #110 right
+    )
+
+def ValheFollowLine(robot):
+    return decorator.Repeat(behavior.Sequence(
+
+        DriveWithVelocity(robot, 0.3),
+        WaitUntilSeesNoLine(robot),
+        behavior.ParallelAny(
+            WaitUntilSeesLine(robot),
+            Wiggle(robot)
+        )
+    ))
 
 @behavior.condition
 def HasFrontBumper(robot):

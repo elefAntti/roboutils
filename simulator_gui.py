@@ -1,8 +1,8 @@
 import sys
 
 from PyQt5 import QtCore
-from PyQt5.QtCore import QObject, QUrl, pyqtSignal, pyqtSlot, pyqtProperty, QTimer
-from PyQt5.QtQml import QQmlApplicationEngine
+from PyQt5.QtCore import QObject, QUrl, pyqtSignal, pyqtSlot, pyqtProperty, QTimer, QPointF
+from PyQt5.QtQml import QQmlApplicationEngine, QQmlListProperty
 from PyQt5.QtWidgets import QApplication
 
 from roboutils.utils import Transform, Vec2
@@ -12,6 +12,9 @@ from roboutils.hal import simulation
 from roboutils.hal.differential_drive import ComputeWheelCommands, ComputeOdometry
 from roboutils import remote
 from roboutils import behavior
+
+from roboutils.worldsimulator import World, Line
+
 
 class GuiRobot(QObject):
     _xChanged = pyqtSignal()
@@ -112,6 +115,34 @@ class GuiRobot(QObject):
         self._leftVelChanged.emit()
         self._rightVelChanged.emit()
 
+class GuiLineSegment(QObject):
+    def __init__(self, beg, end, width, parent=None):
+        super().__init__(parent)
+        self._beg = beg
+        self._end = end
+        self._width = width
+    @pyqtProperty(QPointF)
+    def beg(self):
+        return self._beg
+    @pyqtProperty(QPointF)
+    def end(self):
+        return self._end
+    @pyqtProperty(float)
+    def width(self):
+        return self._width
+
+class GuiWorld(QObject):
+    def __init__(self, world:World, parent=None):
+        super().__init__(parent)
+        self._lines = []
+        for line in world.lines:
+            for lineSegment in line.segmentList:
+                self._lines.append(GuiLineSegment(QPointF(lineSegment.beg.x, lineSegment.beg.y), \
+                QPointF(lineSegment.end.x, lineSegment.end.y), lineSegment.width))
+    @pyqtProperty(QQmlListProperty)
+    def lines(self):
+        return QQmlListProperty(GuiLineSegment, self, self._lines)
+
 app = QApplication(sys.argv)
 sock = remote.RemoteControlSocket(port = 8000)
 
@@ -119,22 +150,32 @@ kinematics = kine.KinematicModel(axel_width = 0.2, left_wheel_r = 0.03, right_wh
 robot_state = hal.RobotInterface(kinematics)
 robot = GuiRobot(robot_state)
 
+world = World([Line([Vec2(-0.7, 0), Vec2(0,0), Vec2(0.0, 0.7), Vec2(0.7, 0.7), Vec2(0.6, -0.7), Vec2(-0.8, -0.9)], 0.10)])
+gui_world = GuiWorld(world)
+
 @behavior.task
-def SetPosToGui(state):
+def UpdateGui(state):
     robot.pose = state.pose
+    robot._line_sensor_changed.emit()
+
+@behavior.task
+def SimulateLineSensor(state, world:World):
+    state.line_sensor = world.isOnLine(robot.pose.applyTo(Vec2(0.05, 0)))
 
 simulation_tree = behavior.ParallelAll(
     remote.UDPReceive(robot_state, sock),
     ComputeWheelCommands(robot_state),
     simulation.SimulateMotor(robot_state.left_wheel),
     simulation.SimulateMotor(robot_state.right_wheel),
+    SimulateLineSensor(robot_state, world),
     ComputeOdometry(robot_state),
-    SetPosToGui(robot_state),
+    UpdateGui(robot_state),
     remote.SendSensors(robot_state, sock)) 
 
 engine = QQmlApplicationEngine()
 engine.rootContext().setContextProperty("robot", robot)
-engine.load('qml/main.qml')
+engine.rootContext().setContextProperty("world", gui_world)
+engine.load('qml/SimulatorWindow.qml')
 
 win = engine.rootObjects()[0]
 win.show()

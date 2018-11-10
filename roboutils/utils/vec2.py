@@ -86,6 +86,11 @@ class Vec2(namedtuple('Vec2', ['x', 'y'])):
     def distance(self, other:'Vec2') -> float:
         return (self - other).length
 
+    def normal(self):
+        return Vec2(
+            x = -self.y,
+            y = self.x)
+
 class Transform(namedtuple('Transform', ['heading', 'offset'])):
     __slots__ = ()
 

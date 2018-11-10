@@ -1,4 +1,4 @@
-from roboutils.behavior.robot import FeelTheWayWithBumpers, FollowLine
+from roboutils.behavior.robot import FeelTheWayWithBumpers, FollowLine, ValheFollowLine
 from roboutils.remote import RemoteControlSocket, SendCommand, UDPReceive
 from roboutils import hal
 from roboutils.utils import kinematics as kine
@@ -45,7 +45,7 @@ robot_behavior = \
             ParallelAll(
                 SelectedMode(remote_command, 2),
                 Print("Entering mode 2"),
-                FollowLine(robot_state, lambda: robot_state.line_sensor)),
+                ValheFollowLine(robot_state)),
             ParallelAll(
                 SelectedMode(remote_command, 3),
                 Print("Entering mode 3"),

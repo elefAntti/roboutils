@@ -17,6 +17,10 @@ Canvas
     property real mapYMin: -2.5;
     property real mapYMax: 2.5;
 
+    property bool seesLine: false;
+
+    property var lines: [];
+
     onRobotHeadingChanged:
     {
         robocanvas.requestPaint();
@@ -48,6 +52,22 @@ Canvas
         ctx.restore();
     }
 
+    function drawLines(ctx)
+    {
+        ctx.save();
+        ctx.strokeStyle = "pink";
+        for(var i=0; i<lines.length; i++)
+        {
+            ctx.lineWidth = lines[i].width;
+            ctx.beginPath();
+            ctx.moveTo(lines[i].beg.x, lines[i].beg.y);
+            ctx.lineTo(lines[i].end.x, lines[i].end.y);
+            ctx.stroke();
+            //todo: piirrä viiva s.e. kulmiin ei jää koloja
+        }
+        ctx.restore();
+    }
+
     function drawRobot(ctx, x, y, h)
     {
         ctx.save();
@@ -55,7 +75,15 @@ Canvas
         ctx.rotate(robotHeading);
         ctx.scale(robotRadius, robotRadius);
 
-        ctx.fillStyle = "light blue";
+        if (seesLine)
+        {
+            ctx.fillStyle = "pink";
+        }
+        else
+        {
+            ctx.fillStyle = "light blue";
+        }
+            
         ctx.lineWidth = 2 / width / robotRadius;
         ctx.strokeStyle = "blue";
 
@@ -95,6 +123,7 @@ Canvas
         ctx.scale(x_scale, y_scale);
         ctx.translate(-mapXMin, mapYMin);
         drawBackground(ctx);
+        drawLines(ctx);
         drawRobot(ctx, robotX, robotY, robotHeading);
         ctx.restore();
     }
