@@ -32,11 +32,12 @@ class LineSegment:
         point = point - self.beg
         xProjection = point.projectionOn(seg)
         yProjection = point.projectionOn(segNormal)
+        halfWidth = self.width / 2
 
-        return 0 < xProjection \
-            and xProjection <= seg.length \
-            and -self.width / 2 < yProjection \
-            and yProjection < self.width / 2
+        return 0 - halfWidth < xProjection \
+            and xProjection <= seg.length + halfWidth \
+            and - halfWidth < yProjection \
+            and yProjection < halfWidth
 
 class World:
     def __init__(self, lines:List[Line]):
