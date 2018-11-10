@@ -5,7 +5,7 @@ import QtCharts 2.0
 ApplicationWindow {
     id: window
     visible: true
-    width: 1000
+    width: 600
     height: 600
 
 	Row
@@ -35,7 +35,9 @@ ApplicationWindow {
 			{
 				robotX: robot.x;
 				robotY: robot.y;
-				robotHeading: robot.heading;			
+				robotHeading: robot.heading;
+				lines: world.lines;
+				seesLine: robot.line_sensor;
 			}
 		}
 	}

@@ -54,7 +54,7 @@ class Vec2(namedtuple('Vec2', ['x', 'y'])):
     def __rmul__(self, scalar):
         return self * scalar
 
-    def __div__(self, scalar):
+    def __truediv__(self, scalar):
         if type(scalar) != float and type(scalar) != int:
             raise TypeError("Can only divide vector with scalars")
         return Vec2(
@@ -85,6 +85,11 @@ class Vec2(namedtuple('Vec2', ['x', 'y'])):
     
     def distance(self, other):
         return (self - other).length
+
+    def normal(self):
+        return Vec2(
+            x = -self.y,
+            y = self.x)
 
 class Transform(namedtuple('Transform', ['heading', 'offset'])):
     __slots__ = ()
