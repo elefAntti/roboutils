@@ -1,4 +1,5 @@
 from collections import namedtuple
+from typing import Optional
 import math
 
 
@@ -129,3 +130,37 @@ class Transform(namedtuple('Transform', ['heading', 'offset'])):
     def inverse(self) -> 'Transform':
         return Transform.rotation(-self.heading)\
             .after(Transform.translation(-self.offset))
+
+class LineSeg(namedtuple('LineSeg', ['start', 'end'])):
+    __slots__=()
+    @property 
+    def span(self) -> Vec2:
+        return self.end - self.start
+    def intersectsY0At( self ) -> Optional[Vec2]:
+        if self.start.y == 0:
+            return self.start
+        span = self.span
+        if span.y == 0:
+            return None #Horizontal line
+        t = -self.start.y/span.y 
+        x0 = self.start.x + t * span.x
+        if t < 0 or t > 1:
+            return None #Intersection point out of segment bounds
+        return Vec2(x0, 0)
+    def applyTransform(self, transform:Transform) -> 'LineSeg':
+        return LineSeg(transform.applyTo(self.start), transform.applyTo(self.end))
+
+class Ray(object):
+    __slots__ = ('transform', 'inverse_tf')
+    def __init__(self, transform: Transform):
+        self.transform = transform
+        self.inverse_tf = transform.inverse()
+    def lineSeqIntersection(self, segment: LineSeg ) -> Optional[float]:
+        """Returns the distance at which the ray intersects a line segment"""
+        intersection = segment.applyTransform(self.inverse_tf).intersectsY0At()
+        if intersection == None:
+            return None
+        elif intersection.x < 0:
+            return None #Intersection point out of bounds for ray
+        else:
+            return intersection.x

@@ -55,15 +55,22 @@ Canvas
     function drawLines(ctx)
     {
         ctx.save();
-        ctx.strokeStyle = "pink";
         for(var i=0; i<lines.length; i++)
         {
+            if(lines[i].style == 0)
+            {
+                ctx.strokeStyle = "pink";
+            }
+            else
+            {
+                ctx.strokeStyle = "black";
+            }
             ctx.lineWidth = lines[i].width;
             ctx.beginPath();
             ctx.moveTo(lines[i].beg.x, lines[i].beg.y);
             ctx.lineTo(lines[i].end.x, lines[i].end.y);
             ctx.stroke();
-            //todo: piirrä viiva s.e. kulmiin ei jää koloja
+            //todo: draw lines so that there are no holes at the end points
         }
         ctx.restore();
     }

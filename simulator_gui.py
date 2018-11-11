@@ -13,7 +13,7 @@ from roboutils.hal.differential_drive import ComputeWheelCommands, ComputeOdomet
 from roboutils import remote
 from roboutils import behavior
 
-from roboutils.worldsimulator import World, Line
+from roboutils.worldsimulator import World, Line, Wall
 
 
 class GuiRobot(QObject):
@@ -116,11 +116,12 @@ class GuiRobot(QObject):
         self._rightVelChanged.emit()
 
 class GuiLineSegment(QObject):
-    def __init__(self, beg, end, width, parent=None):
+    def __init__(self, beg:QPointF, end:QPointF, width:float, style:int = 0, parent:QObject = None):
         super().__init__(parent)
         self._beg = beg
         self._end = end
         self._width = width
+        self._style = style
     @pyqtProperty(QPointF)
     def beg(self):
         return self._beg
@@ -130,6 +131,12 @@ class GuiLineSegment(QObject):
     @pyqtProperty(float)
     def width(self):
         return self._width
+    @pyqtProperty(int)
+    def style(self):
+        return self._style
+
+def Vec2ToQPointF(vec:Vec2) -> QPointF:
+    return QPointF(vec.x, vec.y)
 
 class GuiWorld(QObject):
     def __init__(self, world:World, parent=None):
@@ -137,8 +144,19 @@ class GuiWorld(QObject):
         self._lines = []
         for line in world.lines:
             for lineSegment in line.segmentList:
-                self._lines.append(GuiLineSegment(QPointF(lineSegment.beg.x, lineSegment.beg.y), \
-                QPointF(lineSegment.end.x, lineSegment.end.y), lineSegment.width))
+                self._lines.append(
+                    GuiLineSegment(
+                        Vec2ToQPointF(lineSegment.start),
+                        Vec2ToQPointF(lineSegment.end),
+                        lineSegment.width))
+        for wall in world.walls:
+                self._lines.append(
+                    GuiLineSegment(
+                        Vec2ToQPointF(wall.start),
+                        Vec2ToQPointF(wall.end),
+                        width = 0.01,
+                        style = 1))
+    
     @pyqtProperty(QQmlListProperty)
     def lines(self):
         return QQmlListProperty(GuiLineSegment, self, self._lines)
@@ -150,7 +168,20 @@ kinematics = kine.KinematicModel(axel_width = 0.2, left_wheel_r = 0.03, right_wh
 robot_state = hal.RobotInterface(kinematics)
 robot = GuiRobot(robot_state)
 
-world = World([Line([Vec2(-0.7, 0), Vec2(0,0), Vec2(0.0, 0.7), Vec2(0.7, 0.7), Vec2(0.6, -0.7), Vec2(-0.8, -0.9)], 0.10)])
+world = World(
+    lines = [ 
+        Line([
+            Vec2(-0.7, 0),
+            Vec2(0,0),
+            Vec2(0.0, 0.7),
+            Vec2(0.7, 0.7),
+            Vec2(0.6, -0.7),
+            Vec2(-0.8, -0.9)],
+        width=0.10)],
+    walls=[
+        Wall(Vec2(-1.0, 1.1), Vec2(1.0, 1.1))
+    ] 
+        )
 gui_world = GuiWorld(world)
 
 @behavior.task
