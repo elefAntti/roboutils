@@ -122,50 +122,122 @@ def PavelFollowLine(robot, on_the_line, curvature = 1.9, speed = 0.033, min_dura
 def WaitUntilSeesLine(robot:RobotInterface):
     return robot.line_sensor
 
+START_ANGLE = deg2rad(80) # radians
+
 class RecordAngle:
     def __init__(self, robot:RobotInterface):
         self.robot = robot
         self.angleStart = None
         self.angleDelta = 0
-        self.angleOldDelta = deg2rad(5)
+        self.angleOldDelta = 0
     def start(self):
         self.angleStart = self.robot.heading_rad
         self.angleOldDelta = self.angleDelta
     def update(self):
         self.angleDelta = self.robot.heading_rad - self.angleStart
         return behavior.State.Running
+    def resetAngle(self):
+        self.angleOldDelta = self.robot.heading_rad
+
+class WiggleAccordingToAngle:
+    def __init__(self, robot:RobotInterface, angleRecorder:RecordAngle):
+        self.robot = robot
+        self.angleRecorder = angleRecorder
+        self.behavior = None
+    def start(self):
+        angle = self.angleRecorder.angleOldDelta
+        self.behavior = Wiggle(self.robot, rad2deg(angle))
+        self.behavior.start()
+    def update(self):
+        return self.behavior.update()
+
 
 @behavior.task
 def WaitUntilSeesNoLine(robot:RobotInterface):
     return not robot.line_sensor
 
-def Wiggle(robot, angleDelta):
-    move = behavior.Sequence()
-    if angleDelta == 0 or angleDelta >= 90:
-        return behavior.Sequence(LookBothWays(robot, 5))
-    while angleDelta < 90 :
-        move.append(LookBothWays(robot, angleDelta))
-        angleDelta *= 2
+def Wiggle(robot, startDegree):
+    move = behavior.Sequence(LookBothWays(robot, startDegree))
+    if startDegree == 0 or startDegree >= 90:
+        startDegree = rad2deg(START_ANGLE)
+    while startDegree < 90 :
+        move.append(LookBothWays(robot, startDegree))
+        startDegree *= 2
     return move
+
 
 def LookBothWays(robot, degrees:int):
     return behavior.Sequence(
         TurnOnSpot(robot, deg2rad(degrees)),
-        TurnOnSpot(robot, deg2rad(-degrees))
+        TurnOnSpot(robot, deg2rad(-2*degrees)),
+        TurnOnSpot(robot, deg2rad(degrees))
     )
 
-def ValheFollowLine(robot):
-    recordAngle = RecordAngle(robot)
-    return decorator.Repeat(behavior.Sequence(
+class ResetRecordedAngleWhenGoingStraight:
+    def __init__(self, robot:RobotInterface, angleRecorder:RecordAngle):
+        self.robot = robot
+        self.angleRecorder = angleRecorder
+        self.travelledDistance = None
+    def start(self):
+        self.travelledDistance = 0
+    def update(self):
+        self.travelledDistance += 1
+        if (self.travelledDistance > 10):
+            self.travelledDistance = 0
+            self.angleRecorder.resetAngle
+        return behavior.State.Running
 
+class WaitUntilSeesLineLongEnough:
+    #angle enough should be less than 180deg
+    def __init__(self, robot:RobotInterface, angleEnough:int):
+        self.robot = robot
+        self.angleEnough = angleEnough
+        self.angleWhenStartedToSee = None
+    def start(self):
+        self.angleWhenStartedToSee = self.robot.heading_rad if self.robot.line_sensor else None
+    def update(self):
+        angleNow = self.robot.heading_rad
+        if self.robot.line_sensor:
+            if self.angleWhenStartedToSee is None:
+                self.angleWhenStartedToSee = angleNow
+            else:
+                if abs(angleNow - self.angleWhenStartedToSee) > deg2rad(self.angleEnough):
+                    return behavior.State.Success
+        return behavior.State.Running
+
+class TurnTowardsLine:
+    def __init__(self, robot:RobotInterface, lineWaiter:WaitUntilSeesLineLongEnough):
+        self.robot = robot
+        self.lineWaiter = lineWaiter
+        self.behavior = None
+    def start(self):
+        angle = (self.lineWaiter.angleWhenStartedToSee - self.robot.heading_rad ) / 2
+        self.behavior = TurnOnSpot(self.robot, angle)
+        self.behavior.start()
+    def update(self):
+        return self.behavior.update()
+
+def ValheFollowLine(robot):
+    angleRecorder = RecordAngle(robot)
+    distanceRecorder = ResetRecordedAngleWhenGoingStraight(robot, angleRecorder)
+    waitUntilSeesLineLongEnough = WaitUntilSeesLineLongEnough(robot, 20)
+    turnTowardsLine = TurnTowardsLine(robot, waitUntilSeesLineLongEnough)
+    
+    return decorator.Repeat(behavior.Sequence(
         DriveWithVelocity(robot, 0.3),
-        WaitUntilSeesNoLine(robot),
         behavior.ParallelAny(
-            recordAngle,
-            WaitUntilSeesLine(robot),
-            lambda: Wiggle(robot, lambda: recordAngle.angleOldDelta)
-        )
+            WaitUntilSeesNoLine(robot),
+            distanceRecorder
+        ),
+        behavior.ParallelAny(
+            angleRecorder,
+            waitUntilSeesLineLongEnough,
+            WiggleAccordingToAngle(robot, angleRecorder)
+        ),
+        turnTowardsLine
     ))
+
+
 
 @behavior.condition
 def HasFrontBumper(robot):
