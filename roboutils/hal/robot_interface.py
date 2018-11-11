@@ -1,9 +1,11 @@
 from .. import utils
+from ..utils import math_utils
 
 class Motor:
     def __init__(self):
         self.angular_vel_sp = 0
         self.angular_vel = 0
+        self.max_angular_vel = math_utils.deg2rad(700)
         self.position = 0
 
 class RobotInterface:

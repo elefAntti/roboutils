@@ -1,4 +1,4 @@
-from roboutils.behavior.robot import FeelTheWayWithBumpers, FollowLine, ValheFollowLine
+from roboutils.behavior.robot import FeelTheWayWithBumpers, PavelFollowLine, ValheFollowLine
 from roboutils.remote import RemoteControlSocket, SendCommand, UDPReceive
 from roboutils import hal
 from roboutils.utils import kinematics as kine

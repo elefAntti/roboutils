@@ -14,8 +14,15 @@ class ComputeWheelCommands:
         pass
     def update(self):
         wheel_command = self.robot.kinematics.computeWheelCommand(self.robot.command)
-        self.robot.left_wheel.angular_vel_sp = wheel_command.left_angular_vel
-        self.robot.right_wheel.angular_vel_sp = wheel_command.right_angular_vel
+        limiting_speed = max(
+            abs(wheel_command.left_angular_vel),
+            abs(wheel_command.right_angular_vel))
+        speed_limit = min(
+            self.robot.left_wheel.max_angular_vel,
+            self.robot.right_wheel.max_angular_vel)
+        scale = speed_limit / limiting_speed if limiting_speed > speed_limit else 1.0
+        self.robot.left_wheel.angular_vel_sp = wheel_command.left_angular_vel * scale
+        self.robot.right_wheel.angular_vel_sp = wheel_command.right_angular_vel * scale
         return State.Running
 
 class ComputeOdometry:
