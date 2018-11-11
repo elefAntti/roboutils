@@ -7,7 +7,7 @@ ApplicationWindow
     id: window
     visible: true
     width: 1000
-    height: 600
+    height: 200
     Item
     {
         focus: true
