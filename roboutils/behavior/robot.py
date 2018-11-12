@@ -68,7 +68,7 @@ class WaitForRotation:
         self.target_angle = self.robot.heading_rad + self.angle_diff
     def update(self):
         if self.angle_diff == 0:
-            return True 
+            return behavior.State.Success 
         if self.angle_diff > 0 and self.robot.heading_rad > self.target_angle:
             return behavior.State.Success
         if self.angle_diff < 0 and self.robot.heading_rad < self.target_angle:
