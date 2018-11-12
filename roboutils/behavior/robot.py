@@ -150,12 +150,12 @@ def ValheFollowLine(robot) -> behavior.Task:
 
     return decorator.Repeat(behavior.Sequence(
         behavior.ParallelAny(
-           DriveWithAngleVelocity(robot, 0.2, -deg2rad(90)),
+           DriveWithAngleVelocity(robot, 0.2, -deg2rad(140)),
            WaitForRotation(robot, -deg2rad(90)),
            WaitUntilSeesNoLine(robot)
         ),
         behavior.ParallelAny(
-           DriveWithAngleVelocity(robot, 0.2, deg2rad(90)),
+           DriveWithAngleVelocity(robot, 0.2, deg2rad(140)),
            WaitForRotation(robot, deg2rad(90)),
            WaitUntilSeesLine(robot)
         ),
