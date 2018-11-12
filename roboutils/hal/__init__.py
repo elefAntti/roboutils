@@ -1,1 +1,1 @@
-from .robot_interface import RobotInterface, Motor
+from .robot_interface import RobotInterface, Motor, RangeSensor

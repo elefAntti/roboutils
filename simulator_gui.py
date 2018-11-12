@@ -179,9 +179,7 @@ world = World(
             Vec2(-0.8, -0.9)],
         width=0.10)],
     walls=[
-        Wall(Vec2(-1.0, 1.1), Vec2(1.0, 1.1))
-    ] 
-        )
+        Wall(Vec2(-1.0, 1.1), Vec2(1.0, 1.1))])
 gui_world = GuiWorld(world)
 
 @behavior.task
@@ -198,6 +196,7 @@ simulation_tree = behavior.ParallelAll(
     ComputeWheelCommands(robot_state),
     simulation.SimulateMotor(robot_state.left_wheel),
     simulation.SimulateMotor(robot_state.right_wheel),
+    simulation.SimulateRangeSensor(robot_state, robot_state.front_range, world),
     SimulateLineSensor(robot_state, world),
     ComputeOdometry(robot_state),
     UpdateGui(robot_state),

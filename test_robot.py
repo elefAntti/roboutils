@@ -1,5 +1,5 @@
-from roboutils.behavior.robot import FeelTheWayWithBumpers, PavelFollowLine, ValheFollowLine
-from roboutils.remote import RemoteControlSocket, SendCommand, UDPReceive
+from roboutils.behavior.robot import FeelTheWayWithBumpers, PavelFollowLine, ValheFollowLine, DriveNextToWall
+from roboutils.remote import RemoteControlSocket, SendCommand, UDPReceive, ReceiveSensors
 from roboutils import hal
 from roboutils.utils import kinematics as kine
 from roboutils.behavior import task, guard, run, Selector, ParallelAll
@@ -49,10 +49,14 @@ robot_behavior = \
             ParallelAll(
                 SelectedMode(remote_command, 3),
                 Print("Entering mode 3"),
-                FeelTheWayWithBumpers(robot_state, 0.14))))
+                FeelTheWayWithBumpers(robot_state, 0.14)),
+            ParallelAll(
+                SelectedMode(remote_command, 4),
+                Print("Entering Drive Next to wall"),
+                DriveNextToWall(robot_state, robot_state.front_range, 0.3))))
 tree = \
     ParallelAll(
-        UDPReceive(robot_state, simulator_sock),
+        ReceiveSensors(robot_state, simulator_sock),
         UDPReceive(remote_command, control_sock),
         robot_behavior,
         RateLimit(0.03, SendCommand(robot_state, simulator_sock)))

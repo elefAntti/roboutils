@@ -4,7 +4,7 @@ from ..utils import kinematics as kine
 from ..utils.math_utils import deg2rad, sign, normalizeAngle
 import math
 import time
-from ..hal import RobotInterface
+from ..hal import RobotInterface, RangeSensor
 
 class DriveForward:
     def __init__(self, robot, distance, speed = 0.14, accuracy = 0.01, slowdown_dist = 0.1):
@@ -150,6 +150,25 @@ def ValheFollowLine(robot):
             Wiggle(robot)
         )
     ))
+
+@behavior.task
+def DriveNextToWall(robot: RobotInterface,
+                    sensor: RangeSensor,
+                    distance:float, 
+                    speed:float = 0.14,
+                    slowdown_dist:float = 0.1,
+                    accuracy:float = 0.01):
+    error = sensor.value - distance
+    if abs(error) < accuracy:
+        robot.command = kine.Command(0, 0)
+        return True
+    gain = max(abs(error / slowdown_dist), 1)
+    speed = speed * gain * sign(error)
+    robot.command = kine.Command(
+        velocity = speed,
+        angularVelocity = 0)
+    return False
+
 
 @behavior.condition
 def HasFrontBumper(robot):

@@ -3,6 +3,9 @@ import time
 import msgpack
 from .behavior import task
 
+def getFieldsFromDict(dictionary, fields):
+    return {k: dictionary.get(k, None) for k in fields}
+
 class RemoteControlSocket:
     safety_time = 3.0
     def __init__(self, port, remote_address = None):
@@ -67,11 +70,27 @@ def SendCommand(robot, socket):
     fields_to_send = ("velocity_command", "turn_command")
     return UDPSendFields(robot.__dict__, socket, fields_to_send)
 
-def SendSensors(robot, socket):
+@task
+def SendSensors(robot, socket:RemoteControlSocket):
     fields_to_send = (
             "left_bumper_hit",
             "right_bumper_hit",
             "travelled_distance",
             "heading_rad",
             "line_sensor")
-    return UDPSendFields(robot.__dict__, socket, fields_to_send )
+    message = getFieldsFromDict(robot.__dict__, fields_to_send)
+    message["front_range_m"] = robot.front_range.value
+    socket.send(message)
+    return False
+
+@task
+def ReceiveSensors(robot, socket:RemoteControlSocket):
+    message = socket.receive()
+    if message:
+        robot.left_bumper_hit = message.get("left_bumper_hit", False)
+        robot.right_bumper_hit = message.get("right_bumper_hit", False)
+        robot.travelled_distance = message.get("travelled_distance", 0)
+        robot.heading_rad = message.get("heading_rad", 0)
+        robot.line_sensor = message.get("line_sensor", False)
+        robot.front_range.value = message.get("front_range_m", robot.front_range.max_range)
+    return False
