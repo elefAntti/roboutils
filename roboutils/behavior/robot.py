@@ -2,7 +2,6 @@ from . import behavior
 from . import decorator
 from ..utils import kinematics as kine
 from ..utils.math_utils import deg2rad, rad2deg, sign, normalizeAngle
-from ..utils.Radians import Radians
 import math
 import time
 from ..hal import RobotInterface
@@ -85,6 +84,13 @@ def DriveWithVelocity(robot, speed):
     return True
 
 @behavior.task
+def DriveWithAngleVelocity(robot, speed, angle):
+    robot.command = kine.Command(
+        velocity = speed,
+        angularVelocity = angle
+    )
+
+@behavior.task
 def Stop(robot):
     robot.command = kine.Command(
         velocity = 0,
@@ -138,214 +144,21 @@ def WaitUntilSeesLine(robot:RobotInterface):
 def WaitUntilSeesNoLine(robot:RobotInterface):
     return not robot.line_sensor
 
-START_ANGLE = deg2rad(10) # radians
-RESET_DISTANCE = 0.05
-ANGLE_ENOUGH = abs(deg2rad(5)) # must be positive
-MAX_TURN_ANGLE = deg2rad(90) # must be positive
-FORWARD_AFTER_NOLINE = 0.08 # meters, must be positive; try 0.8%*lineWidth
-
-# Uses radians
-# Argument 'record' is a function that
-# takes the recorded value as an argument and
-# records it somewhere
-class RecordAngle:
-    def __init__(self, robot:RobotInterface, record:Callable):
-        self.robot = robot
-        self.angleStart = None
-        self.angleDelta = START_ANGLE
-        self.record = record
-    def start(self):
-        self.angleStart = self.robot.heading_rad
-        self.angleDelta = angleDiff(self.robot.heading_rad, self.angleStart)
-        self.record(self.angleDelta)
-    def update(self):
-        self.angleDelta = angleDiff(self.robot.heading_rad, self.angleStart)
-        self.record(self.angleDelta)
-        return behavior.State.Running
-
-# Uses radians
-def Wiggle(robot, firstAngle) -> behavior.Task:
-    angle = firstAngle
-    if firstAngle == 0 or firstAngle >= MAX_TURN_ANGLE or firstAngle <= - MAX_TURN_ANGLE:
-        angle = deg2rad(START_ANGLE)
-    move = behavior.Sequence(LookBothWays(robot, angle))
-    while abs(angle) < MAX_TURN_ANGLE :
-        angle *= 2
-        move.append(LookBothWays(robot, angle))
-    return move
-
-
-class LineSightingRecorder:
-    def __init__(self, robot:RobotInterface):
-        self.robot = robot
-        self.startedToSeeLine_angle = None
-        self.startedToSeeLine_distance = None
-    def start(self):
-        self.startedToSeeLine_angle = self.robot.heading_rad if self.robot.line_sensor else None
-        self.startedToSeeLine_distrance = self.robot.travelled_distance if self.robot.line_sensor else None
-    def update(self):
-        seesLine = self.robot.line_sensor
-        angleNow = self.robot.heading_rad
-        positionNow = self.robot.travelled_distance
-        if seesLine:
-            if self.startedToSeeLine_angle is None:
-                self.startedToSeeLine_angle = angleNow
-                self.startedToSeeLine_distance = positionNow
-        else:
-            self.startedToSeeLine_angle = None
-            self.startedToSeeLine_distance = None
-        return behavior.State.Running
-
-
-# Assumes robot is turning
-# E.g. "see line all the time during a turn of X radians"
-@behavior.task
-def SeeLineDuringAngle(robot:RobotInterface, angle, lineRecorder:LineSightingRecorder):
-    seesLine = robot.line_sensor
-    angleNow = robot.heading_rad
-    if seesLine:
-        if lineRecorder.startedToSeeLine_angle is None:
-            return False
-        else:
-            if abs(angleDiff(angleNow, lineRecorder.startedToSeeLine_angle)) >= angle :
-                return True
-    else:
-        return False
-
-
-
-class TurnSetAngle:
-    def __init__(self, robot:RobotInterface, direction:int):
-        self.robot = robot
-        self.behavior = None
-        self.angle = None #positive
-        self.startDir = None
-        if direction == 1 or direction == -1:
-            self.direction = direction
-        else:
-            raise AttributeError("Direction has to be -1 or 1")
-    def start(self):
-        self.behavior = TurnOnSpot(self.robot, self.direction * math.pi)
-        self.startDir = self.robot.heading_rad
-        self.behavior.start()
-    def update(self):
-        if self.angle is None:
-            raise RuntimeError("Angle is not set")
-        if self.angle <= 0:
-            raise AttributeError("Angle can not be negative or 0.")
-        else:
-            if abs(angleDiff(self.startDir, self.robot.heading_rad)) >= self.angle :
-                return behavior.State.Success
-            else:
-                return behavior.State.Running
-    def setAngle(self, angle):
-        self.angle = angle
-    
-
-# Keeps turning if sees the line,
-# until does not see it any more.
-# Then turn back all the way.
-def TurnAwayAndBack(robot:RobotInterface, angle:float) -> behavior.Task:
-    if angle == 0:
-        raise AttributeError("Angle can not be 0")
-    sign = lambda x: (1, -1)[x < 0]
-    turnAngle = TurnSetAngle(robot, - sign(angle))
-    task = behavior.Sequence(
-        behavior.ParallelAny(
-            RecordAngle(robot, lambda angle: turnAngle.setAngle(abs(angle))),
-            behavior.Sequence(
-                    TurnOnSpot(robot, angle),
-                    behavior.ParallelAny(
-                        TurnOnSpot(robot, sign(angle)*math.pi),
-                        WaitUntilSeesNoLine(robot)
-                    )
-                )
-        ),
-        turnAngle
-    )
-    return task
-        
-
-# Uses radians
-def LookBothWaysKeepingLineInSight(robot, angle) -> behavior.Task:
-    if angle == 0:
-        raise AttributeError("Angle can not be 0.")
-    return behavior.Sequence(
-        TurnAwayAndBack(robot, angle),
-        TurnAwayAndBack(robot, -angle),
-        DriveForward(robot, 0.10),
-        DriveForward(robot, -0.10)
-    )
-        
-
-def WiggleKeepingLineInSight(robot, firstAngle) -> behavior.Task:
-    angle = firstAngle
-    if abs(angle) >= deg2rad(180):
-        raise AttributeError("fistAngle can not be >= 180 deg.")
-    move = behavior.Sequence(LookBothWaysKeepingLineInSight(robot, angle))
-    while angle < deg2rad(180) and angle > deg2rad(-180):
-        angle *= 2
-        move.append(LookBothWaysKeepingLineInSight(robot, angle))
-    return move
-
-#radians
-def LookBothWays(robot, angle:float) -> behavior.Task:
-    return behavior.Sequence(
-        TurnOnSpot(robot, angle),
-        TurnOnSpot(robot, -2*angle),
-        TurnOnSpot(robot, angle)
-    )
-
-#radians
-class ResetRecordedAngleWhenGoingStraight:
-    def __init__(self, robot:RobotInterface, angleRecorder:RecordAngle):
-        self.robot = robot
-        self.angleRecorder = angleRecorder
-        self.distance_at_start = None
-    def start(self):
-        self.distance_at_start = self.robot.travelled_distance
-    def update(self):
-        travDistNow = self.robot.travelled_distance
-        if (travDistNow - self.distance_at_start > RESET_DISTANCE):
-            self.distance_at_start = travDistNow
-            self.angleRecorder.resetAngle
-        return behavior.State.Running
-
-
-class TurnTowardsLine:
-    def __init__(self, robot:RobotInterface, lineSeer:LineSightingRecorder):
-        self.robot = robot
-        self.lineSeer = lineSeer
-        self.behavior = None
-    def start(self):
-        if self.lineSeer.startedToSeeLine_angle is None:
-            raise TypeError("Ei pitäis olla None wtf")
-        angle = angleDiff(self.robot.heading_rad, self.lineSeer.startedToSeeLine_angle)
-        self.behavior = behavior.Sequence(
-            DriveForward(self.robot, 0.20),
-            DriveForward(self.robot, -0.20),
-            TurnOnSpot(self.robot, angle)
-        )
-        self.behavior.start()
-    def update(self):
-        return self.behavior.update()
 
 
 def ValheFollowLine(robot) -> behavior.Task:
-    lineSeer = LineSightingRecorder(robot)
-    seeLineDuringAngle2 = SeeLineDuringAngle(robot, ANGLE_ENOUGH, lineSeer)
-    turnTowardsLine2 = TurnTowardsLine(robot, lineSeer)
 
     return decorator.Repeat(behavior.Sequence(
-        DriveWithVelocity(robot, 0.3),
-        WaitUntilSeesNoLine(robot),
-        DriveForward(robot, FORWARD_AFTER_NOLINE),
         behavior.ParallelAny(
-            lineSeer,
-            seeLineDuringAngle2,
-            WiggleKeepingLineInSight(robot, START_ANGLE)
+           DriveWithAngleVelocity(robot, 0.2, -deg2rad(90)),
+           WaitForRotation(robot, -deg2rad(90)),
+           WaitUntilSeesNoLine(robot)
         ),
-        turnTowardsLine2
+        behavior.ParallelAny(
+           DriveWithAngleVelocity(robot, 0.2, deg2rad(90)),
+           WaitForRotation(robot, deg2rad(90)),
+           WaitUntilSeesLine(robot)
+        ),
     ))
 
 
