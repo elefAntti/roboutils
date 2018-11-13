@@ -179,7 +179,8 @@ world = World(
             Vec2(-0.8, -0.9)],
         width=0.10)],
     walls=[
-        Wall(Vec2(-1.0, 1.1), Vec2(1.0, 1.1))])
+        Wall(Vec2(-1.0, 1.1), Vec2(1.0, 1.1)),
+        Wall(Vec2(1.1, 1.1), Vec2(1.6, 0.5))])
 gui_world = GuiWorld(world)
 
 @behavior.task

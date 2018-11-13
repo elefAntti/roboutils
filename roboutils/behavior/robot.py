@@ -1,6 +1,7 @@
 from . import behavior
 from . import decorator
 from ..utils import kinematics as kine
+from ..utils import vec2
 from ..utils.math_utils import deg2rad, sign, normalizeAngle
 import math
 import time
@@ -169,6 +170,30 @@ def DriveNextToWall(robot: RobotInterface,
         angularVelocity = 0)
     return False
 
+@behavior.from_generator
+def AlignToWall(robot: RobotInterface, sensor:RangeSensor, angle_offset:float = 0.0):
+    start_angle = robot.heading_rad
+    yield behavior.State.Running
+    robot.command = kine.Command(0.0, -0.5)
+
+    while robot.heading_rad - start_angle > deg2rad(-15):
+        yield behavior.State.Running
+
+    tf = vec2.Transform.rotation(robot.heading_rad).after(sensor.location)
+    hit_point1 = tf.applyTo(vec2.Vec2(sensor.value, 0.0))
+    robot.command = kine.Command(0, 0.5)
+
+    while robot.heading_rad - start_angle < deg2rad(15):
+        yield behavior.State.Running
+
+    tf = vec2.Transform.rotation(robot.heading_rad).after(sensor.location)
+    hit_point2 = tf.applyTo(vec2.Vec2(sensor.value, 0.0))
+    face_to = (hit_point1 - hit_point2).normal()
+    angle = normalizeAngle(face_to.heading - robot.heading_rad + angle_offset)
+    print(str(face_to.heading))
+    turn = TurnOnSpot(robot, angle, accuracy = 0.005, slowdown_dist = 0.02)
+    for state in behavior.as_generator(turn):
+        yield state
 
 @behavior.condition
 def HasFrontBumper(robot):

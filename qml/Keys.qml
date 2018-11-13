@@ -69,9 +69,10 @@ ApplicationWindow
 
         Button
         {
-            text: "Companion cube"
+            text: "Align to wall"
             onClicked: backend.releaseManual(4)
         }
+        
         Button
         {
             text: "Discs of Doom"
