@@ -1,10 +1,11 @@
 from . import behavior
 from . import decorator
 from ..utils import kinematics as kine
-from ..utils.math_utils import deg2rad, sign, normalizeAngle
+from ..utils.math_utils import deg2rad, rad2deg, sign, normalizeAngle
 import math
 import time
 from ..hal import RobotInterface
+from typing import Callable
 
 class DriveForward:
     def __init__(self, robot, distance, speed = 0.14, accuracy = 0.01, slowdown_dist = 0.1):
@@ -53,8 +54,6 @@ class TurnOnSpot:
             angularVelocity = angular_vel)
         return behavior.State.Running
 
-
-
 class WaitForRotation:
     def __init__(self, robot, angle_diff):
         self.target_angle = 0
@@ -81,6 +80,12 @@ def DriveWithVelocity(robot, speed):
         velocity = speed,
         angularVelocity = 0)
     return True
+
+@behavior.task
+def DriveWithVelocityAndRotation(robot, speed, angularVelocity):
+    robot.command = kine.Command(
+        velocity = speed,
+        angularVelocity = angularVelocity)
 
 @behavior.task
 def Stop(robot):
@@ -118,6 +123,7 @@ def PavelFollowLine(robot, on_the_line, curvature = 1.9, speed = 0.033, min_dura
         for state in behavior.as_generator(end_part):
             yield state
 
+
 @behavior.task
 def WaitUntilSeesLine(robot:RobotInterface):
     return robot.line_sensor
@@ -126,30 +132,50 @@ def WaitUntilSeesLine(robot:RobotInterface):
 def WaitUntilSeesNoLine(robot:RobotInterface):
     return not robot.line_sensor
 
-def Wiggle(robot):
-    return behavior.Sequence(
-        TurnOnSpot(robot, deg2rad(5)), #5 left
-        TurnOnSpot(robot, deg2rad(-10)), #5 right
-        TurnOnSpot(robot, deg2rad(20)), #15 left
-        TurnOnSpot(robot, deg2rad(-35)), #15 right
-        TurnOnSpot(robot, deg2rad(45)), #30 left
-        TurnOnSpot(robot, deg2rad(-60)), #30 right
-        TurnOnSpot(robot, deg2rad(90)), #60 left
-        TurnOnSpot(robot, deg2rad(-120)), #60 right
-        TurnOnSpot(robot, deg2rad(170)), #110 left
-        TurnOnSpot(robot, deg2rad(-220)), #110 right
-    )
+@behavior.condition
+def SeesLine(robot:RobotInterface):
+    return robot.line_sensor
 
-def ValheFollowLine(robot):
+@behavior.condition
+def DoesNotSeeLine(robot:RobotInterface):
+    return not robot.line_sensor
+
+@behavior.task
+def DoNothing():
+    return True
+
+def ValheFollowLine(robot) -> behavior.Task:
+
     return decorator.Repeat(behavior.Sequence(
-
-        DriveWithVelocity(robot, 0.3),
-        WaitUntilSeesNoLine(robot),
+        behavior.Selector(
+            behavior.Sequence(
+                SeesLine(robot),
+                behavior.ParallelAny(
+                    DriveWithVelocityAndRotation(robot, 0.2, -deg2rad(140)),
+                    WaitForRotation(robot, deg2rad(-180)),
+                    WaitUntilSeesNoLine(robot)
+                )
+            ),
+            behavior.Sequence(
+                DriveWithVelocity(robot, 0.3),
+                WaitUntilSeesLine(robot)
+            )
+        ),
         behavior.ParallelAny(
-            WaitUntilSeesLine(robot),
-            Wiggle(robot)
+           DriveWithVelocityAndRotation(robot, 0.2, deg2rad(140)),
+           WaitForRotation(robot, deg2rad(180)),
+           WaitUntilSeesLine(robot)
+        ),
+        behavior.Selector(
+            behavior.Sequence(
+                DoesNotSeeLine(robot),
+                TurnOnSpot(robot, deg2rad(-180))
+            ),
+            DoNothing()
         )
     ))
+
+
 
 @behavior.condition
 def HasFrontBumper(robot):
