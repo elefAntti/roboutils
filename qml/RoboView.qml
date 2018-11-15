@@ -12,10 +12,9 @@ Canvas
     property real robotHeading: 0;
     property real robotRadius: 0.25;
     
-    property real mapXMin: -2.5;
-    property real mapXMax: 2.5;
-    property real mapYMin: -2.5;
-    property real mapYMax: 2.5;
+    property real zoom: 0.2;
+    property real centerX: 0.0;
+    property real centerY: 0.0;
 
     property bool seesLine: false;
 
@@ -117,21 +116,60 @@ Canvas
         ctx.fillStyle = "blue";
         ctx.fill();
 
-        ctx.restore();        
+        ctx.restore();
     }
 
     onPaint:
     {
         var ctx = getContext("2d");
         ctx.reset();
+
+        ctx.fillStyle = "dark grey";
+        ctx.beginPath();
+        ctx.rect(0, 0, width, height);
+        ctx.fill();
         ctx.save();
-        var x_scale = width/(mapXMax - mapXMin)
-        var y_scale = -height/(mapYMax - mapYMin)
-        ctx.scale(x_scale, y_scale);
-        ctx.translate(-mapXMin, mapYMin);
+        ctx.scale(width, -height);
+        ctx.translate(0.5, -0.5);
+        ctx.scale(zoom, zoom);
+        ctx.translate(-centerX, centerY);
+
         drawBackground(ctx);
         drawLines(ctx);
         drawRobot(ctx, robotX, robotY, robotHeading);
         ctx.restore();
+    }
+
+    MouseArea 
+    {
+        anchors.fill: parent
+        function adjustZoom(zoom)
+        {
+            robocanvas.zoom += zoom;
+            if(robocanvas.zoom < 0.01)
+            {
+                robocanvas.zoom = 0.01;
+            }
+            robocanvas.requestPaint();
+        }
+        onWheel: {
+
+            if (wheel.modifiers & Qt.ControlModifier)
+            {
+                adjustZoom(wheel.angleDelta.y / 240);
+            } 
+            else if (wheel.modifiers & Qt.ShiftModifier)
+            {
+                robocanvas.centerX -= wheel.angleDelta.y / robocanvas.width / robocanvas.zoom * 0.5;
+                robocanvas.requestPaint();
+            }
+            else
+            {
+                robocanvas.centerX -= wheel.angleDelta.x / robocanvas.width / robocanvas.zoom * 0.5;
+                robocanvas.centerY -= wheel.angleDelta.y / robocanvas.height / robocanvas.zoom * 0.5;
+                robocanvas.requestPaint();
+
+            }
+        }
     }
 }

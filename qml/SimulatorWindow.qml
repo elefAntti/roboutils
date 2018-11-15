@@ -1,6 +1,5 @@
 import QtQuick 2.5
 import QtQuick.Controls 1.1
-import QtCharts 2.0
 
 ApplicationWindow {
     id: window

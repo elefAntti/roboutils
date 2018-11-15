@@ -64,7 +64,7 @@ backend = Backend()
 
 engine = QQmlApplicationEngine()
 engine.rootContext().setContextProperty("backend", backend)
-engine.load('qml/Keys.qml')
+engine.load('qml/RemoteWindow.qml')
 
 win = engine.rootObjects()[0]
 win.show()
