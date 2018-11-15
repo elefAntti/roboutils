@@ -54,8 +54,6 @@ class TurnOnSpot:
             angularVelocity = angular_vel)
         return behavior.State.Running
 
-
-
 class WaitForRotation:
     def __init__(self, robot, angle_diff):
         self.target_angle = 0
@@ -84,11 +82,10 @@ def DriveWithVelocity(robot, speed):
     return True
 
 @behavior.task
-def DriveWithAngleVelocity(robot, speed, angle):
+def DriveWithVelocityAndRotation(robot, speed, angularVelocity):
     robot.command = kine.Command(
         velocity = speed,
-        angularVelocity = angle
-    )
+        angularVelocity = angularVelocity)
 
 @behavior.task
 def Stop(robot):
@@ -136,29 +133,27 @@ def WaitUntilSeesNoLine(robot:RobotInterface):
     return not robot.line_sensor
 
 @behavior.condition
-def seesLine(robot:RobotInterface):
+def SeesLine(robot:RobotInterface):
     return robot.line_sensor
 
 @behavior.condition
-def doesNotSeeLine(robot:RobotInterface):
+def DoesNotSeeLine(robot:RobotInterface):
     return not robot.line_sensor
 
 @behavior.task
-def DoNothing(robot:RobotInterface):
+def DoNothing():
     return True
-
-
 
 def ValheFollowLine(robot) -> behavior.Task:
 
     return decorator.Repeat(behavior.Sequence(
         behavior.Selector(
             behavior.Sequence(
-                seesLine(robot),
+                SeesLine(robot),
                 behavior.ParallelAny(
-                DriveWithAngleVelocity(robot, 0.2, -deg2rad(140)),
-                WaitForRotation(robot, deg2rad(-180)),
-                WaitUntilSeesNoLine(robot)
+                    DriveWithVelocityAndRotation(robot, 0.2, -deg2rad(140)),
+                    WaitForRotation(robot, deg2rad(-180)),
+                    WaitUntilSeesNoLine(robot)
                 )
             ),
             behavior.Sequence(
@@ -167,16 +162,16 @@ def ValheFollowLine(robot) -> behavior.Task:
             )
         ),
         behavior.ParallelAny(
-           DriveWithAngleVelocity(robot, 0.2, deg2rad(140)),
+           DriveWithVelocityAndRotation(robot, 0.2, deg2rad(140)),
            WaitForRotation(robot, deg2rad(180)),
            WaitUntilSeesLine(robot)
         ),
         behavior.Selector(
             behavior.Sequence(
-                doesNotSeeLine(robot),
+                DoesNotSeeLine(robot),
                 TurnOnSpot(robot, deg2rad(-180))
             ),
-            DoNothing(robot)
+            DoNothing()
         )
     ))
 
