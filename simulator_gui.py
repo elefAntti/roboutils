@@ -1,8 +1,5 @@
 import sys
 
-
-import ezdxf
-
 from PyQt5 import QtCore
 from PyQt5.QtCore import QObject, QUrl, pyqtSignal, pyqtSlot, pyqtProperty, QTimer, QPointF
 from PyQt5.QtQml import QQmlApplicationEngine, QQmlListProperty
@@ -16,7 +13,7 @@ from roboutils.hal.differential_drive import ComputeWheelCommands, ComputeOdomet
 from roboutils import remote
 from roboutils import behavior
 
-from roboutils.worldsimulator import World, Line, Wall
+from roboutils.worldsimulator import World, Line, Wall, load_world, qt_interop
 
 
 class GuiRobot(QObject):
@@ -118,51 +115,6 @@ class GuiRobot(QObject):
         self._leftVelChanged.emit()
         self._rightVelChanged.emit()
 
-class GuiLineSegment(QObject):
-    def __init__(self, beg:QPointF, end:QPointF, width:float, style:int = 0, parent:QObject = None):
-        super().__init__(parent)
-        self._beg = beg
-        self._end = end
-        self._width = width
-        self._style = style
-    @pyqtProperty(QPointF)
-    def beg(self):
-        return self._beg
-    @pyqtProperty(QPointF)
-    def end(self):
-        return self._end
-    @pyqtProperty(float)
-    def width(self):
-        return self._width
-    @pyqtProperty(int)
-    def style(self):
-        return self._style
-
-def Vec2ToQPointF(vec:Vec2) -> QPointF:
-    return QPointF(vec.x, vec.y)
-
-class GuiWorld(QObject):
-    def __init__(self, world:World, parent=None):
-        super().__init__(parent)
-        self._lines = []
-        for line in world.lines:
-            for lineSegment in line.segmentList:
-                self._lines.append(
-                    GuiLineSegment(
-                        Vec2ToQPointF(lineSegment.start),
-                        Vec2ToQPointF(lineSegment.end),
-                        lineSegment.width))
-        for wall in world.walls:
-                self._lines.append(
-                    GuiLineSegment(
-                        Vec2ToQPointF(wall.start),
-                        Vec2ToQPointF(wall.end),
-                        width = 0.01,
-                        style = 1))
-    
-    @pyqtProperty(QQmlListProperty)
-    def lines(self):
-        return QQmlListProperty(GuiLineSegment, self, self._lines)
 
 app = QApplication(sys.argv)
 sock = remote.RemoteControlSocket(port = 8000)
@@ -171,25 +123,8 @@ kinematics = kine.KinematicModel(axel_width = 0.2, left_wheel_r = 0.03, right_wh
 robot_state = hal.RobotInterface(kinematics)
 robot = GuiRobot(robot_state)
 
-walls = []
-drawing = ezdxf.readfile("map.dxf")
-model = drawing.modelspace()
-for entity in model.query('LINE'):
-    if entity.dxf.layer == "Walls":
-        walls.append(Wall(Vec2(*entity.dxf.start), Vec2(*entity.dxf.end)))
-
-world = World(
-    lines = [ 
-        Line([
-            Vec2(-0.7, 0),
-            Vec2(0,0),
-            Vec2(0.0, 0.7),
-            Vec2(0.7, 0.7),
-            Vec2(0.6, -0.7),
-            Vec2(-0.8, -0.9)],
-        width=0.10)],
-    walls=walls)
-gui_world = GuiWorld(world)
+world = load_world.fromCadFile("map.dxf")
+gui_world = qt_interop.GuiWorld(world)
 
 @behavior.task
 def UpdateGui(state):
