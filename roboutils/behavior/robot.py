@@ -1,13 +1,16 @@
 from . import behavior
+from . behavior import Behavior
 from . import decorator
 from ..utils import kinematics as kine
+from ..utils.math_utils import deg2rad, rad2deg, sign, normalizeAngle
 from ..utils import vec2
-from ..utils.math_utils import deg2rad, sign, normalizeAngle
 import math
 import time
 from ..hal import RobotInterface, RangeSensor
+from .terminator import DoNothing
+from typing import Callable
 
-class DriveForward:
+class DriveForward(Behavior):
     def __init__(self, robot, distance, speed = 0.14, accuracy = 0.01, slowdown_dist = 0.1):
         self.robot = robot
         self.speed = abs(speed)
@@ -30,10 +33,10 @@ class DriveForward:
             angularVelocity = 0)
         return behavior.State.Running
 
-def Reverse(robot, distance, *args, **kwargs):
+def Reverse(robot, distance, *args, **kwargs) -> Behavior:
     return DriveForward(robot, -distance, *args, **kwargs)
 
-class TurnOnSpot:
+class TurnOnSpot(Behavior):
     def __init__(self, robot, angle, angular_vel = 0.12, accuracy = 0.01, slowdown_dist = 0.1):
         self.robot = robot
         self.angular_vel = abs(angular_vel)
@@ -54,9 +57,7 @@ class TurnOnSpot:
             angularVelocity = angular_vel)
         return behavior.State.Running
 
-
-
-class WaitForRotation:
+class WaitForRotation(Behavior):
     def __init__(self, robot, angle_diff):
         self.target_angle = 0
         self.robot = robot
@@ -69,7 +70,7 @@ class WaitForRotation:
         self.target_angle = self.robot.heading_rad + self.angle_diff
     def update(self):
         if self.angle_diff == 0:
-            return True 
+            return behavior.State.Success 
         if self.angle_diff > 0 and self.robot.heading_rad > self.target_angle:
             return behavior.State.Success
         if self.angle_diff < 0 and self.robot.heading_rad < self.target_angle:
@@ -82,6 +83,12 @@ def DriveWithVelocity(robot, speed):
         velocity = speed,
         angularVelocity = 0)
     return True
+
+@behavior.task
+def DriveWithVelocityAndRotation(robot, speed, angularVelocity):
+    robot.command = kine.Command(
+        velocity = speed,
+        angularVelocity = angularVelocity)
 
 @behavior.task
 def Stop(robot):
@@ -119,6 +126,7 @@ def PavelFollowLine(robot, on_the_line, curvature = 1.9, speed = 0.033, min_dura
         for state in behavior.as_generator(end_part):
             yield state
 
+
 @behavior.task
 def WaitUntilSeesLine(robot:RobotInterface):
     return robot.line_sensor
@@ -127,28 +135,41 @@ def WaitUntilSeesLine(robot:RobotInterface):
 def WaitUntilSeesNoLine(robot:RobotInterface):
     return not robot.line_sensor
 
-def Wiggle(robot):
-    return behavior.Sequence(
-        TurnOnSpot(robot, deg2rad(5)), #5 left
-        TurnOnSpot(robot, deg2rad(-10)), #5 right
-        TurnOnSpot(robot, deg2rad(20)), #15 left
-        TurnOnSpot(robot, deg2rad(-35)), #15 right
-        TurnOnSpot(robot, deg2rad(45)), #30 left
-        TurnOnSpot(robot, deg2rad(-60)), #30 right
-        TurnOnSpot(robot, deg2rad(90)), #60 left
-        TurnOnSpot(robot, deg2rad(-120)), #60 right
-        TurnOnSpot(robot, deg2rad(170)), #110 left
-        TurnOnSpot(robot, deg2rad(-220)), #110 right
-    )
+@behavior.condition
+def SeesLine(robot:RobotInterface):
+    return robot.line_sensor
 
-def ValheFollowLine(robot):
+@behavior.condition
+def DoesNotSeeLine(robot:RobotInterface):
+    return not robot.line_sensor
+
+def ValheFollowLine(robot:RobotInterface) -> Behavior:
     return decorator.Repeat(behavior.Sequence(
-
-        DriveWithVelocity(robot, 0.3),
-        WaitUntilSeesNoLine(robot),
+        behavior.Selector(
+            behavior.Sequence(
+                SeesLine(robot),
+                behavior.ParallelAny(
+                    DriveWithVelocityAndRotation(robot, 0.2, -deg2rad(140)),
+                    WaitForRotation(robot, deg2rad(-180)),
+                    WaitUntilSeesNoLine(robot)
+                )
+            ),
+            behavior.Sequence(
+                DriveWithVelocity(robot, 0.3),
+                WaitUntilSeesLine(robot)
+            )
+        ),
         behavior.ParallelAny(
-            WaitUntilSeesLine(robot),
-            Wiggle(robot)
+           DriveWithVelocityAndRotation(robot, 0.2, deg2rad(140)),
+           WaitForRotation(robot, deg2rad(180)),
+           WaitUntilSeesLine(robot)
+        ),
+        behavior.Selector(
+            behavior.Sequence(
+                DoesNotSeeLine(robot),
+                TurnOnSpot(robot, deg2rad(-180))
+            ),
+            DoNothing()
         )
     ))
 
@@ -196,30 +217,32 @@ def AlignToWall(robot: RobotInterface, sensor:RangeSensor, angle_offset:float = 
         yield state
 
 @behavior.condition
-def HasFrontBumper(robot):
+def HasFrontBumper(robot:RobotInterface):
     return robot.has_left_bumper or robot.has_right_bumper
 
 @behavior.condition
-def IfLeftBumperHit(robot):
+def IfLeftBumperHit(robot:RobotInterface):
     return robot.left_bumper_hit
 
 @behavior.condition
-def IfRightBumperHit(robot):
+def IfRightBumperHit(robot:RobotInterface):
     return robot.right_bumper_hit
 
 @behavior.task
-def WaitForBumperHit(robot):
+def WaitForBumperHit(robot:RobotInterface):
     return (robot.left_bumper_hit or robot.right_bumper_hit)
 
 
-def DriveToAWall(robot, speed):
+def DriveToAWall(robot:RobotInterface, speed:float) -> Behavior:
     return behavior.Sequence(
             HasFrontBumper(robot),
             DriveWithVelocity(robot, speed),
             WaitForBumperHit(robot),
             Stop(robot))
 
-def TurnAwayFromWall(robot, reverse_distance = 0.1, turn_angle = deg2rad(20)):
+def TurnAwayFromWall(robot:RobotInterface,
+                    reverse_distance:float = 0.1,
+                    turn_angle:float = deg2rad(20)) -> Behavior:
     return behavior.Selector(
         behavior.Sequence(
             IfLeftBumperHit(robot),
@@ -230,7 +253,7 @@ def TurnAwayFromWall(robot, reverse_distance = 0.1, turn_angle = deg2rad(20)):
             Reverse(robot, reverse_distance),
             TurnOnSpot(robot, turn_angle)))
 
-def FeelTheWayWithBumpers(robot, speed):
+def FeelTheWayWithBumpers(robot:RobotInterface, speed:float) -> Behavior:
     return decorator.RepeatUntilFail(
         behavior.Sequence(
             DriveToAWall(robot, speed),
