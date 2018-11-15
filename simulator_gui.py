@@ -1,5 +1,8 @@
 import sys
 
+
+import ezdxf
+
 from PyQt5 import QtCore
 from PyQt5.QtCore import QObject, QUrl, pyqtSignal, pyqtSlot, pyqtProperty, QTimer, QPointF
 from PyQt5.QtQml import QQmlApplicationEngine, QQmlListProperty
@@ -168,6 +171,13 @@ kinematics = kine.KinematicModel(axel_width = 0.2, left_wheel_r = 0.03, right_wh
 robot_state = hal.RobotInterface(kinematics)
 robot = GuiRobot(robot_state)
 
+walls = []
+drawing = ezdxf.readfile("map.dxf")
+model = drawing.modelspace()
+for entity in model.query('LINE'):
+    if entity.dxf.layer == "Walls":
+        walls.append(Wall(Vec2(*entity.dxf.start), Vec2(*entity.dxf.end)))
+
 world = World(
     lines = [ 
         Line([
@@ -178,9 +188,7 @@ world = World(
             Vec2(0.6, -0.7),
             Vec2(-0.8, -0.9)],
         width=0.10)],
-    walls=[
-        Wall(Vec2(-1.0, 1.1), Vec2(1.0, 1.1)),
-        Wall(Vec2(1.1, 1.1), Vec2(1.6, 0.5))])
+    walls=walls)
 gui_world = GuiWorld(world)
 
 @behavior.task
