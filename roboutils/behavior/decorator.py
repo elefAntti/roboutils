@@ -1,6 +1,6 @@
-from .behavior import State
+from .behavior import State, Behavior
 
-class Repeat(object):
+class Repeat(Behavior):
     """Repeat child task forever"""
     __slots__ = ("child", "completed")
     def __init__(self, child):
@@ -13,7 +13,7 @@ class Repeat(object):
             self.child.start()
         return State.Running
 
-class RepeatUntilFail(object):
+class RepeatUntilFail(Behavior):
     """Repeat child task until it fails"""
     __slots__ = ("child", "completed")
     def __init__(self, child):
@@ -28,7 +28,7 @@ class RepeatUntilFail(object):
             self.child.start()
         return State.Running
 
-class RepeatUntilSuccess(object):
+class RepeatUntilSuccess(Behavior):
     """Repeat child task until it succeeds"""
     __slots__ = ("child", "completed")
     def __init__(self, child):
@@ -44,7 +44,7 @@ class RepeatUntilSuccess(object):
         return State.Running
 
 
-class Invert(object):
+class Invert(Behavior):
     """Execute child task, but revert it's success when it completes"""
     __slots__ = ("child", "completed")
     def __init__(self, child):
@@ -59,7 +59,7 @@ class Invert(object):
             return State.Failure
         return State.Running
 
-class Succeed(object):
+class Succeed(Behavior):
     """Execute child task, but always return success when it's complete"""
     __slots__ = ("child", "completed")
     def __init__(self, child):
@@ -74,7 +74,7 @@ class Succeed(object):
             return State.Success
         return State.Running
 
-class Fail(object):
+class Fail(Behavior):
     """Execute child task, but always return failure when it's complete"""
     __slots__ = ("child", "completed")
     def __init__(self, child):
