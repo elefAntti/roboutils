@@ -1,13 +1,15 @@
 from . import behavior
+from . behavior import Behavior
 from . import decorator
 from ..utils import kinematics as kine
 from ..utils.math_utils import deg2rad, rad2deg, sign, normalizeAngle
 import math
 import time
 from ..hal import RobotInterface
+from .terminator import DoNothing
 from typing import Callable
 
-class DriveForward:
+class DriveForward(Behavior):
     def __init__(self, robot, distance, speed = 0.14, accuracy = 0.01, slowdown_dist = 0.1):
         self.robot = robot
         self.speed = abs(speed)
@@ -30,10 +32,10 @@ class DriveForward:
             angularVelocity = 0)
         return behavior.State.Running
 
-def Reverse(robot, distance, *args, **kwargs):
+def Reverse(robot, distance, *args, **kwargs) -> Behavior:
     return DriveForward(robot, -distance, *args, **kwargs)
 
-class TurnOnSpot:
+class TurnOnSpot(Behavior):
     def __init__(self, robot, angle, angular_vel = 0.12, accuracy = 0.01, slowdown_dist = 0.1):
         self.robot = robot
         self.angular_vel = abs(angular_vel)
@@ -54,7 +56,7 @@ class TurnOnSpot:
             angularVelocity = angular_vel)
         return behavior.State.Running
 
-class WaitForRotation:
+class WaitForRotation(Behavior):
     def __init__(self, robot, angle_diff):
         self.target_angle = 0
         self.robot = robot
@@ -140,12 +142,7 @@ def SeesLine(robot:RobotInterface):
 def DoesNotSeeLine(robot:RobotInterface):
     return not robot.line_sensor
 
-@behavior.task
-def DoNothing():
-    return True
-
-def ValheFollowLine(robot) -> behavior.Task:
-
+def ValheFollowLine(robot:RobotInterface) -> Behavior:
     return decorator.Repeat(behavior.Sequence(
         behavior.Selector(
             behavior.Sequence(
@@ -178,30 +175,32 @@ def ValheFollowLine(robot) -> behavior.Task:
 
 
 @behavior.condition
-def HasFrontBumper(robot):
+def HasFrontBumper(robot:RobotInterface):
     return robot.has_left_bumper or robot.has_right_bumper
 
 @behavior.condition
-def IfLeftBumperHit(robot):
+def IfLeftBumperHit(robot:RobotInterface):
     return robot.left_bumper_hit
 
 @behavior.condition
-def IfRightBumperHit(robot):
+def IfRightBumperHit(robot:RobotInterface):
     return robot.right_bumper_hit
 
 @behavior.task
-def WaitForBumperHit(robot):
+def WaitForBumperHit(robot:RobotInterface):
     return (robot.left_bumper_hit or robot.right_bumper_hit)
 
 
-def DriveToAWall(robot, speed):
+def DriveToAWall(robot:RobotInterface, speed:float) -> Behavior:
     return behavior.Sequence(
             HasFrontBumper(robot),
             DriveWithVelocity(robot, speed),
             WaitForBumperHit(robot),
             Stop(robot))
 
-def TurnAwayFromWall(robot, reverse_distance = 0.1, turn_angle = deg2rad(20)):
+def TurnAwayFromWall(robot:RobotInterface,
+                    reverse_distance:float = 0.1,
+                    turn_angle:float = deg2rad(20)) -> Behavior:
     return behavior.Selector(
         behavior.Sequence(
             IfLeftBumperHit(robot),
@@ -212,7 +211,7 @@ def TurnAwayFromWall(robot, reverse_distance = 0.1, turn_angle = deg2rad(20)):
             Reverse(robot, reverse_distance),
             TurnOnSpot(robot, turn_angle)))
 
-def FeelTheWayWithBumpers(robot, speed):
+def FeelTheWayWithBumpers(robot:RobotInterface, speed:float) -> Behavior:
     return decorator.RepeatUntilFail(
         behavior.Sequence(
             DriveToAWall(robot, speed),
