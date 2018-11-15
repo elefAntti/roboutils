@@ -126,15 +126,6 @@ def PavelFollowLine(robot, on_the_line, curvature = 1.9, speed = 0.033, min_dura
         for state in behavior.as_generator(end_part):
             yield state
 
-# uses radians
-# if starting from angle1, 
-# how to turn in order to reach angle2
-def angleDiff(angle1:float, angle2:float) -> float:
-    angle1 = angle1 % (2*math.pi)
-    angle2 = angle2 % (2*math.pi)
-    diff = angle1-angle2
-    return diff if diff<math.pi else diff-2*math.pi
-
 
 @behavior.task
 def WaitUntilSeesLine(robot:RobotInterface):
@@ -144,21 +135,49 @@ def WaitUntilSeesLine(robot:RobotInterface):
 def WaitUntilSeesNoLine(robot:RobotInterface):
     return not robot.line_sensor
 
+@behavior.condition
+def seesLine(robot:RobotInterface):
+    return robot.line_sensor
+
+@behavior.condition
+def doesNotSeeLine(robot:RobotInterface):
+    return not robot.line_sensor
+
+@behavior.task
+def DoNothing(robot:RobotInterface):
+    return True
+
 
 
 def ValheFollowLine(robot) -> behavior.Task:
 
     return decorator.Repeat(behavior.Sequence(
-        behavior.ParallelAny(
-           DriveWithAngleVelocity(robot, 0.2, -deg2rad(140)),
-           WaitForRotation(robot, -deg2rad(90)),
-           WaitUntilSeesNoLine(robot)
+        behavior.Selector(
+            behavior.Sequence(
+                seesLine(robot),
+                behavior.ParallelAny(
+                DriveWithAngleVelocity(robot, 0.2, -deg2rad(140)),
+                WaitForRotation(robot, deg2rad(-180)),
+                WaitUntilSeesNoLine(robot)
+                )
+            ),
+            behavior.Sequence(
+                DriveWithVelocity(robot, 0.3),
+                WaitUntilSeesLine(robot)
+            )
         ),
         behavior.ParallelAny(
            DriveWithAngleVelocity(robot, 0.2, deg2rad(140)),
-           WaitForRotation(robot, deg2rad(90)),
+           WaitForRotation(robot, deg2rad(180)),
            WaitUntilSeesLine(robot)
         ),
+        behavior.Selector(
+            behavior.Sequence(
+                doesNotSeeLine(robot),
+                TurnOnSpot(robot, deg2rad(-180))
+            ),
+            DoNothing(robot)
+        )
     ))
 
 
