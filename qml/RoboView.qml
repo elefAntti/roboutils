@@ -145,7 +145,7 @@ Canvas
         anchors.fill: parent
         function adjustZoom(zoom)
         {
-            robocanvas.zoom += zoom;
+            robocanvas.zoom *= Math.exp(zoom/5);
             if(robocanvas.zoom < 0.01)
             {
                 robocanvas.zoom = 0.01;
@@ -158,9 +158,10 @@ Canvas
             {
                 adjustZoom(wheel.angleDelta.y / 240);
             } 
-            else if (wheel.modifiers & Qt.ShiftModifier)
+            else if (wheel.modifiers & Qt.AltModifier)
             {
-                robocanvas.centerX -= wheel.angleDelta.y / robocanvas.width / robocanvas.zoom * 0.5;
+                robocanvas.centerY -= wheel.angleDelta.x / robocanvas.width / robocanvas.zoom * 0.5;
+                robocanvas.centerX -= wheel.angleDelta.y / robocanvas.height / robocanvas.zoom * 0.5;
                 robocanvas.requestPaint();
             }
             else
